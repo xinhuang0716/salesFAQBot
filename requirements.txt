@@ -1,0 +1,4 @@
+qdrant_client==1.15.1
+fastembed==0.7.3
+pandas==2.3.3
+openpyxl==3.1.5
