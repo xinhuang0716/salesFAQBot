@@ -40,7 +40,7 @@
   ```bash
   # powershell
   cd backend
-  python server.py
+  python vecSearch.py
   ```
 
 ## Help
