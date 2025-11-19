@@ -7,6 +7,24 @@
 |   Python    |  3.12   |
 |     pip     | 25.0.1  |
 
+## Project Strucure
+
+```
+salesFAQBot/
+├── backend/
+│   ├── pipeline.py             # RAG 文件檢索流程
+│   ├── embedding.py
+│   └── utils/
+│       ├── database.py         # 初始化QDrant、建立資料庫 client instance
+│       ├── denseVec.py         # 向量化文件
+│       └── BM25.py             # BM25初始化、斷詞、BM25檢索
+├── frontend/
+│   └── index.html
+├── .env
+├── requirements.txt
+└── README.md
+```
+
 ## Installation
 
 - Create and activate a virtual environment (optional but recommended):
@@ -16,7 +34,7 @@
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
   python -m venv .venv
-  .\.venv\Scripts\Activate.ps1
+  .venv\Scripts\Activate.ps1
   ```
 
 - Install the required packages:
@@ -32,15 +50,15 @@
 
   ```bash
   # powershell
-  ./.venv/Scripts/Activate.ps1
+  .venv\Scripts\Activate.ps1
   ```
 
-- run the backend server:
+- run the RAG pipeline
 
   ```bash
   # powershell
   cd backend
-  python vecSearch.py
+  python pipeline.py
   ```
 
 ## Help

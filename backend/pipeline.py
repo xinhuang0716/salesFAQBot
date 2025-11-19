@@ -2,27 +2,29 @@ import os, pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-from utils.database import initQdrant
+from utils.database import initQdrant, Qdrant
 from utils.denseVec import DenseVector
 
 
 def main():
 
-    # Initialize Qdrant database.
+    collection = "FAQ"
     df = pd.read_excel("./knowledgeDoc/知識文件蒐集_20251031.xlsx")
-
     embedder = DenseVector()
-    embeddingDocs = embedder.encode(df["relevance"].values.tolist(), encode_type="document")
 
-    payloads = {
-        "collection": "FAQ",
-        "dimension": embedder.dimension,
-        "vecList": embeddingDocs,
-        "payloadList": df.to_dict(orient="records")
-    }
+    # initialize Qdrant database.
+    client = Qdrant(collection=collection)
+    if client is None:
+        print(f"Collection {collection} does not exist. Initializing Qdrant database...")
 
-    client = initQdrant(**payloads)
-    print(f"Qdrant initialized with collection: {payloads['collection']}, total points: {len(payloads['vecList'])}")
+        payloads = {
+            "collection": collection,
+            "dimension": embedder.dimension,
+            "vecList": embedder.encode(df["relevance"].values.tolist(), encode_type="document"),
+            "payloadList": df.to_dict(orient="records")
+        }
+        
+        client = initQdrant(**payloads)
 
     # vecSearch
     query = "申請AI PRO手機憑證時，有哪些接收OTP驗證碼的選項？"
