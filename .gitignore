@@ -215,3 +215,6 @@ db/
 cache/
 __pypackages__/
 __pycache__/
+
+# LLM model files
+models/
