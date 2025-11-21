@@ -218,3 +218,6 @@ __pycache__/
 
 # LLM model files
 models/
+
+# test records
+test_records/
