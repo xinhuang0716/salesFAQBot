@@ -1,5 +1,7 @@
 # Sales FAQ Bot
 
+<img width="892" height="686" alt="圖片" src="https://github.com/user-attachments/assets/9784355e-c962-4644-ab93-83789ab00a23" />
+
 ## Prerequisites
 
 | Requirement | Version |
@@ -70,3 +72,4 @@ Email: tom.h.huang@fubon.com, kris.yj.chen@fubon.com
 Tel:   02-87716888 #69175, 02-66080879 #69194
 Dept:  證券 數據科學部 資料服務處(5F)
 ```
+
