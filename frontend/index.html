@@ -260,6 +260,9 @@
       const chatInput = document.getElementById("chatInput");
       const sendButton = document.getElementById("sendButton");
 
+      // API Configuration
+      const API_BASE_URL = "http://localhost:8000";
+
       function addMessage(content, isUser = false) {
         const messageDiv = document.createElement("div");
         messageDiv.className = `message ${isUser ? "user" : "bot"}`;
@@ -273,21 +276,54 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
 
-      function simulateBotResponse(userMessage) {
-        const responses = [
-          "Thank you for your message! How can I assist you further?",
-          "I understand your inquiry. Let me help you with that.",
-          "That's a great question! Here's what I can tell you...",
-          "I'm here to help! Could you provide more details?",
-          "Thanks for reaching out! I'll do my best to assist you.",
-        ];
+      function showTypingIndicator() {
+        const typingDiv = document.createElement("div");
+        typingDiv.className = "message bot typing-indicator";
+        typingDiv.id = "typing";
+        typingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">...</div>
+            `;
+        chatMessages.appendChild(typingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
 
-        const randomResponse =
-          responses[Math.floor(Math.random() * responses.length)];
+      function removeTypingIndicator() {
+        const typingDiv = document.getElementById("typing");
+        if (typingDiv) {
+          typingDiv.remove();
+        }
+      }
 
-        setTimeout(() => {
-          addMessage(randomResponse, false);
-        }, 1000);
+      async function getBotResponse(userMessage) {
+        try {
+          showTypingIndicator();
+
+          const response = await fetch(`${API_BASE_URL}/response`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message: userMessage }),
+          });
+
+          removeTypingIndicator();
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Failed to get response");
+          }
+
+          const data = await response.json();
+          addMessage(data.response, false);
+        } catch (error) {
+          removeTypingIndicator();
+          console.error("Error:", error);
+          addMessage(
+            `抱歉，發生錯誤：${error.message}。請確認後端伺服器是否正在運行。`,
+            false
+          );
+        }
       }
 
       chatForm.addEventListener("submit", function (e) {
@@ -297,7 +333,12 @@
         if (message) {
           addMessage(message, true);
           chatInput.value = "";
-          simulateBotResponse(message);
+          sendButton.disabled = true;
+
+          getBotResponse(message).finally(() => {
+            sendButton.disabled = false;
+            chatInput.focus();
+          });
         }
       });
 
