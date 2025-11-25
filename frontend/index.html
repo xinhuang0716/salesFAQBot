@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SalesBot Chat</title>
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- GitHub Markdown CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown-light.min.css">
     <style>
       * {
         margin: 0;
@@ -94,6 +98,111 @@
         border-radius: 1rem;
         border: 1px solid #374151;
         line-height: 1.5;
+      }
+
+      /* Markdown content styling */
+      .message-content .markdown-body {
+        background: transparent !important;
+        color: inherit !important;
+        font-size: 1rem;
+        padding: 0;
+      }
+
+      .message-content .markdown-body p {
+        margin: 0.5em 0;
+      }
+
+      .message-content .markdown-body p:first-child {
+        margin-top: 0;
+      }
+
+      .message-content .markdown-body p:last-child {
+        margin-bottom: 0;
+      }
+
+      .message-content .markdown-body h1,
+      .message-content .markdown-body h2,
+      .message-content .markdown-body h3,
+      .message-content .markdown-body h4,
+      .message-content .markdown-body h5,
+      .message-content .markdown-body h6 {
+        color: inherit;
+        border-bottom: none;
+        margin: 0.75em 0 0.5em 0;
+      }
+
+      .message-content .markdown-body h1:first-child,
+      .message-content .markdown-body h2:first-child,
+      .message-content .markdown-body h3:first-child {
+        margin-top: 0;
+      }
+
+      .message-content .markdown-body ul,
+      .message-content .markdown-body ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+      }
+
+      .message-content .markdown-body code {
+        background: rgba(0, 0, 0, 0.3);
+        color: #fbbf24;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-size: 0.9em;
+      }
+
+      .message-content .markdown-body pre {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.75em;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0.5em 0;
+      }
+
+      .message-content .markdown-body pre code {
+        background: transparent;
+        color: #e5e7eb;
+        padding: 0;
+      }
+
+      .message-content .markdown-body strong {
+        color: inherit;
+        font-weight: 600;
+      }
+
+      .message-content .markdown-body em {
+        color: inherit;
+      }
+
+      .message-content .markdown-body a {
+        color: #60a5fa;
+        text-decoration: none;
+      }
+
+      .message-content .markdown-body a:hover {
+        text-decoration: underline;
+      }
+
+      .message-content .markdown-body blockquote {
+        border-left: 3px solid #6366f1;
+        padding-left: 1em;
+        margin: 0.5em 0;
+        color: #d1d5db;
+      }
+
+      .message-content .markdown-body table {
+        border-collapse: collapse;
+        margin: 0.5em 0;
+      }
+
+      .message-content .markdown-body table th,
+      .message-content .markdown-body table td {
+        border: 1px solid #374151;
+        padding: 0.5em;
+      }
+
+      .message-content .markdown-body table th {
+        background: rgba(99, 102, 241, 0.2);
       }
 
       .message.user .message-content {
@@ -267,10 +376,30 @@
         const messageDiv = document.createElement("div");
         messageDiv.className = `message ${isUser ? "user" : "bot"}`;
 
-        messageDiv.innerHTML = `
-                <div class="message-avatar">${isUser ? "👤" : "🤖"}</div>
-                <div class="message-content">${content}</div>
+        // Render markdown for bot messages, plain text for user messages
+        let renderedContent;
+        if (!isUser && typeof marked !== 'undefined') {
+          try {
+            renderedContent = marked.parse(content);
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content"><div class="markdown-body">${renderedContent}</div></div>
             `;
+          } catch (error) {
+            console.error('Markdown parsing error:', error);
+            renderedContent = content;
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">${renderedContent}</div>
+            `;
+          }
+        } else {
+          renderedContent = content;
+          messageDiv.innerHTML = `
+                <div class="message-avatar">${isUser ? "👤" : "🤖"}</div>
+                <div class="message-content">${renderedContent}</div>
+            `;
+        }
 
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;

@@ -221,3 +221,7 @@ models/
 
 # test records
 test_records/
+
+# logs
+logs/
+*.log
