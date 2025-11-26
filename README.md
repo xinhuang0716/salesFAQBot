@@ -22,6 +22,9 @@ salesFAQBot/
 │   ├── dense_search.py         # 向量檢索
 │   ├── bm25_search.py          # BM25檢索
 │   ├── hybrid_search.py        # Hybrid Search檢索
+│   └── embedder/
+│       ├── base_embedder.py    
+│       └── bge_embedder.py     # BAAI/bge-m3 模型
 │   └── utils/
 │       ├── database.py         # 初始化QDrant、建立資料庫 client instance
 │       ├── denseVec.py         # 向量化文件
@@ -78,5 +81,6 @@ Email: tom.h.huang@fubon.com, kris.yj.chen@fubon.com
 Tel:   02-87716888 #69175, 02-66080879 #69194
 Dept:  證券 數據科學部 資料服務處(5F)
 ```
+
 
 
