@@ -15,7 +15,13 @@
 salesFAQBot/
 ├── backend/
 │   ├── pipeline.py             # RAG 文件檢索流程
-│   ├── embedding.py
+│   ├── main.py
+│   ├── corpus_builder.py       # 文本處理
+│   ├── database_builder.py     # 初始化QDrant、建立資料庫 client instance
+│   ├── index_builder.py        # 向量化文件
+│   ├── dense_search.py         # 向量檢索
+│   ├── bm25_search.py          # BM25檢索
+│   ├── hybrid_search.py        # Hybrid Search檢索
 │   └── utils/
 │       ├── database.py         # 初始化QDrant、建立資料庫 client instance
 │       ├── denseVec.py         # 向量化文件
@@ -72,4 +78,5 @@ Email: tom.h.huang@fubon.com, kris.yj.chen@fubon.com
 Tel:   02-87716888 #69175, 02-66080879 #69194
 Dept:  證券 數據科學部 資料服務處(5F)
 ```
+
 
