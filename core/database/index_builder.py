@@ -1,10 +1,10 @@
 import numpy as np
 from embedder.bge_embedder import BGEEmbedder
 from src.corpus_builder import build_corpus_payload
-from src.database_builder import init_Qdrant
+from database_builder import init_Qdrant
 
 
-def build_index(excel_path: str = "docs/知識文件蒐集.xlsx", collection_name: str = "FAQ", db_path: str = "./db", model_name: str = "BAAI/bge-m3", device: str = "cpu") -> None:
+def build_index(excel_path: str = "", collection_name: str = "FAQ", db_path: str = "./db", model_name: str = "BAAI/bge-m3", device: str = "cpu", recreate: bool = False) -> None:
     """
     Build the Qdrant vector index from the given file.
 
@@ -35,11 +35,12 @@ def build_index(excel_path: str = "docs/知識文件蒐集.xlsx", collection_nam
         vectors=doc_embs,
         payloads=payloads,
         db_path=db_path,
-        recreate=True, 
+        recreate=recreate, 
     )
 
     print("[Index Builder] Done building index.")
 
 
 if __name__ == "__main__":
+
     build_index()
