@@ -1,6 +1,6 @@
 # Sales FAQ Bot
 
-<img width="892" height="686" alt="圖片" src="https://github.com/user-attachments/assets/9784355e-c962-4644-ab93-83789ab00a23" />
+<img width="650" height="500" alt="demo" src="https://github.com/user-attachments/assets/9784355e-c962-4644-ab93-83789ab00a23" />
 
 ## Prerequisites
 
@@ -13,24 +13,35 @@
 
 ```
 salesFAQBot/
-├── backend/
-│   ├── pipeline.py             # RAG 文件檢索流程
-│   ├── main.py
-│   ├── corpus_builder.py       # 文本處理
-│   ├── database_builder.py     # 初始化QDrant、建立資料庫 client instance
-│   ├── index_builder.py        # 向量化文件
-│   ├── dense_search.py         # 向量檢索
-│   ├── bm25_search.py          # BM25檢索
-│   ├── hybrid_search.py        # Hybrid Search檢索
+├── core/
+│   └── init/
+│       ├── model.py
+│       ├── bm25.py
+│       ├── db.py 
+│       └── embedding.py
 │   └── embedder/
-│       ├── base_embedder.py    
-│       └── bge_embedder.py     # BAAI/bge-m3 模型
-│   └── utils/
-│       ├── database.py         # 初始化QDrant、建立資料庫 client instance
-│       ├── denseVec.py         # 向量化文件
-│       └── BM25.py             # BM25初始化、斷詞、BM25檢索
-├── frontend/
+│       ├── base_embedder.py
+│       ├── xxx_embedder.py 
+│       └── yyy_embedder.py
+│   └── reranker/
+│       ├── base_reranker.py    
+│       └── xxx_reranker.py
+│   └── retrieve/ 
+│       └── pipeline.py
+│   └── response/
+│       ├── prompt.py    
+│       └── aoai.py
+├── utils/
+│   ├── datapreprocessing.py
+│   └── *.py
+├── template/
 │   └── index.html
+├── static/
+│   └── css/
+│       └── style.css
+│   └── js/
+│       └── script.js   
+├── server.py
 ├── .env
 ├── requirements.txt
 └── README.md
@@ -81,6 +92,7 @@ Email: tom.h.huang@fubon.com, kris.yj.chen@fubon.com
 Tel:   02-87716888 #69175, 02-66080879 #69194
 Dept:  證券 數據科學部 資料服務處(5F)
 ```
+
 
 
 
