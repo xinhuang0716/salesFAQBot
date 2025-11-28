@@ -102,30 +102,3 @@ def response(query: str, top_k_docs: List[str] = None,  model: str = "gemini-2.0
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError) as e:
         raise ValueError(f"Unexpected API response format: {e}\nResponse: {result}")
-
-
-# Test function
-if __name__ == "__main__":
-    # Mock top-K documents for testing
-    mock_docs = [
-        "若顯示「身分不符請洽臨櫃辦理」，表示客戶可能為以下身分：未成年人、曾於未成年時開立帳戶但成年後未換約、非本國人、法人、無現貨帳號者，需臨櫃辦理變更。",
-        "若申請狀態為「審查中」：待主審分公司審件中，此時客戶不可修改欲辦理分公司。"
-    ]
-
-    test_query = "當線上變更戶籍地址時，若出現「身分不符請洽臨櫃辦理」，客戶可能屬於哪些身分？"
-
-    print("=" * 60)
-    print("測試 RAG Response Generation")
-    print("=" * 60)
-    print(f"\n查詢: {test_query}\n")
-    print(f"檢索到 {len(mock_docs)} 筆相關文檔\n")
-
-    try:
-        response = response(test_query, mock_docs)
-        print("AI 回應:")
-        print("-" * 60)
-        print(response)
-        print("-" * 60)
-    except Exception as e:
-        print(f"錯誤: {e}")
-

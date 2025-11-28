@@ -1,14 +1,13 @@
+import os, sys, logging
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, validator
-import uvicorn
-import logging
-import sys
-from datetime import datetime, timezone
-import os
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
+import uvicorn
 from utils.responseAPI import response as get_rag_response
 
 # Load environment variables
@@ -20,18 +19,18 @@ class Config:
     APP_NAME = "Sales FAQ Bot API"
     VERSION = "1.0.0"
     HOST = os.getenv("HOST", "0.0.0.0")
-    PORT = int(os.getenv("PORT", "8000"))
+    PORT = int(os.getenv("PORT", "8010"))
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    MAX_MESSAGE_LENGTH = 1000
+    MAX_MESSAGE_LENGTH = 1024
     LOG_DIR = "logs"
 
 
 config = Config()
 
-# Ensure log directory exists BEFORE configuring logging
-os.makedirs(config.LOG_DIR, exist_ok=True)
 
 # Configure logging
+os.makedirs(config.LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -46,10 +45,12 @@ logger = logging.getLogger(__name__)
 # Lifespan context manager for startup and shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
     # Startup
     logger.info(f"Starting {config.APP_NAME} v{config.VERSION}")
     logger.info(f"Server running on {config.HOST}:{config.PORT}")
     yield
+
     # Shutdown
     logger.info(f"Shutting down {config.APP_NAME}")
 
@@ -73,6 +74,11 @@ app.add_middleware(
 )
 
 
+# Mount static files directory
+templates = Jinja2Templates(directory="./template")
+app.mount("/static", StaticFiles(directory="./static"), name="static")
+
+
 # Request/Response models with validation
 class QueryRequest(BaseModel):
     message: str = Field(
@@ -83,50 +89,32 @@ class QueryRequest(BaseModel):
     )
 
     @validator("message")
-    def validate_message(cls, v):
-        if not v.strip():
+    def _strip_and_validate(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
             raise ValueError("Message cannot be empty or whitespace only")
-        return v.strip()
+        return v
 
 
 class QueryResponse(BaseModel):
     response: str = Field(..., description="Bot response to the query")
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
     status: str = Field(default="success")
 
 
-class HealthResponse(BaseModel):
-    status: str
-    version: str
-    timestamp: str
-
-
-class ErrorResponse(BaseModel):
-    detail: str
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-
-
-# Custom exception handler
+# Unified exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+        )
+
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            detail="An internal error occurred. Please try again later."
-        ).dict(),
-    )
-
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
-    return JSONResponse(
-        status_code=exc.status_code, content=ErrorResponse(detail=exc.detail).dict()
+        content={"detail": "An internal error occurred. Please try again later."},
     )
 
 
@@ -139,26 +127,9 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Health check endpoint
-@app.get("/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
-    """Health check endpoint for monitoring and load balancers"""
-    return HealthResponse(
-        status="healthy",
-        version=config.VERSION,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-    )
-
-
 @app.get("/", tags=["Root"])
 async def root():
-    """Root endpoint with API information"""
-    return {
-        "message": config.APP_NAME,
-        "version": config.VERSION,
-        "status": "running",
-        "endpoints": {"health": "/health", "response": "/response", "docs": "/docs"},
-    }
+    return FileResponse("./template/index.html", media_type="text/html")
 
 
 @app.post("/response", response_model=QueryResponse, tags=["Query"])
@@ -179,7 +150,10 @@ async def get_response(request: QueryRequest):
         logger.info(f"Processing query: {request.message[:50]}...")
 
         # TODO: Integrate with vector database to retrieve top_k_docs
-        if request.message == "當線上變更戶籍地址時，若出現「身分不符請洽臨櫃辦理」，客戶可能屬於哪些身分？":
+        if (
+            request.message
+            == "當線上變更戶籍地址時，若出現「身分不符請洽臨櫃辦理」，客戶可能屬於哪些身分？"
+        ):
             top_k_docs = [
                 "若顯示「身分不符請洽臨櫃辦理」，表示客戶可能為以下身分：未成年人、曾於未成年時開立帳戶但成年後未換約、非本國人、法人、無現貨帳號者，需臨櫃辦理變更。",
                 "若申請狀態為「審查中」：待主審分公司審件中，此時客戶不可修改欲辦理分公司。",

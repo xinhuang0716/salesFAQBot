@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SalesBot Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown-light.min.css"
+    />
+    <link rel="icon" href="https://favicon.io/favicon.ico" />
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h1>Sales Bot Assistant</h1>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            您好！我是您的 AI 營業員助手。今天需要我幫您什麼嗎？
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <form class="chat-input-form" id="chatForm">
+          <input
+            type="text"
+            class="chat-input"
+            id="chatInput"
+            placeholder="Type your message..."
+            autocomplete="off"
+          />
+          <button type="submit" class="send-button" id="sendButton">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/script.js"></script>
+  </body>
+</html>
