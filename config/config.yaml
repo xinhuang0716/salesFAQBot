@@ -1,0 +1,19 @@
+# FastAPI
+
+server:
+  host: "0.0.0.0"
+  port: 8010
+  cors_origins: ["*"]
+  max_message_length: 1024
+  cors_max_age: 3600
+  log_dir: "./logs"
+  log_level: "info"
+
+# RAG
+db:
+  collection_name: "FAQ"
+
+embedder:
+  type: "sentence_transformer"
+  model_repo: "BAAI/bge-m3"
+

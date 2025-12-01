@@ -1,38 +1,13 @@
-import requests
-import os
 from typing import List
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
-
-
-def response(query: str, top_k_docs: List[str] = None,  model: str = "gemini-2.0-flash", temperature: float = 0.3) -> str:
+def system_prompt() -> str:
     """
-    Generate RAG-based response using Gemini API
-
-    Args:
-        query: User's question/query
-        top_k_docs: List of top-K retrieved documents from vector database, each doc should be a string.
-        model: Gemini model name to use
-        temperature: Controls randomness (0.0-1.0). Lower = more focused and deterministic
+    Returns the system prompt for the RAG-based response generation.
 
     Returns:
-        str: Generated response from LLM
-
-    Raises:
-        ValueError: If API key is not found
-        requests.HTTPError: If API request fails
+        str: The system prompt string.
     """
-
-    # Get API key
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in environment variables")
-
-    # System prompt
-    system_prompt = """
+    return """
     你是一位專業的證券公司數位內部助理，負責回答關於內部規章、產品說明、數位服務等相關問題。
 
     ## 你的職責：
@@ -62,6 +37,20 @@ def response(query: str, top_k_docs: List[str] = None,  model: str = "gemini-2.0
     ❌ 不要回答與產品/服務無關的問題
     """
 
+def prompt_constructor(query: str, top_k_docs: List[str]) -> str:
+    """
+    Construct the full prompt for the RAG-based response generation.
+
+    Args:
+        query (str): User's question/query
+        top_k_docs (List[str]): List of top-K retrieved documents from vector database
+
+    Returns:
+        str: The constructed full prompt.
+    """
+
+    prefix = system_prompt()
+
     # Format context from retrieved documents
     if not top_k_docs:
         context = "（無相關參考文檔）"
@@ -70,7 +59,7 @@ def response(query: str, top_k_docs: List[str] = None,  model: str = "gemini-2.0
 
     # Construct the full prompt
     full_prompt = f"""
-    {system_prompt}
+    {prefix}
 
     ## Knowledge Base:
     {context}
@@ -81,24 +70,4 @@ def response(query: str, top_k_docs: List[str] = None,  model: str = "gemini-2.0
     請根據上述 Knowledge Base 回答用戶問題。
     """
 
-    # API configuration
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    headers = {"Content-Type": "application/json", "X-goog-api-key": api_key}
-
-    # Prepare request data
-    data = {
-        "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
-        "generationConfig": {"temperature": temperature, "topP": 0.95, "topK": 40},
-    }
-
-    # Make API request
-    response = requests.post(url, headers=headers, json=data)
-    response.raise_for_status()
-
-    # Extract and return the generated text
-    result = response.json()
-
-    try:
-        return result["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as e:
-        raise ValueError(f"Unexpected API response format: {e}\nResponse: {result}")
+    return full_prompt

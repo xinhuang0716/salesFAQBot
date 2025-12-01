@@ -2,16 +2,13 @@ import os
 from dotenv import load_dotenv
 from huggingface_hub import login, snapshot_download
 from sentence_transformers import SentenceTransformer
+from core.embedder.base_embedder import BaseEmbedder
 
 
-class DenseVector:
+class STEmbedder(BaseEmbedder):
+    """SentenceTransformer Embedder implementation."""
 
-    def __init__(self, repo="google/embeddinggemma-300m"):
-        """Transform text into dense embedding vectors using SentenceTransformer.
-
-        Args:
-            repo (str, optional): HuggingFace model repository ID. Defaults to "google/embeddinggemma-300m".
-        """
+    def __init__(self, repo: str = "BAAI/bge-m3"):
 
         self.repo = repo
         self.root = "./models"
@@ -21,8 +18,6 @@ class DenseVector:
         self.__isDownloaded()
 
         self.model = SentenceTransformer(self.modelDir)
-        self.dimension = self.model.get_sentence_embedding_dimension()
-        self.max_seq_length = self.model.max_seq_length
 
     def __login(self):
         """Login to HuggingFace Hub using environment variable."""
@@ -35,30 +30,29 @@ class DenseVector:
     def __isDownloaded(self):
         """Download model from HuggingFace Hub if not exists locally."""
         os.makedirs("./models", exist_ok=True)
-        if os.path.exists(self.modelDir): return
+        if os.path.exists(self.modelDir):  return print(f"Model {self.repo} already exists.")
 
         print(f"Downloading model {self.repo}...")
         snapshot_download(repo_id=self.repo, local_dir=self.modelDir)
 
-    def encode(self, texts: str|list[str], normalize: bool = True, encode_type: str = "query") -> list[float]|list[list[float]]:
-        """Encode text(s) into dense embedding vector(s).
+    def encode(self, texts: str | list[str], encode_type: str) -> list[list[float]]:
+        """
+        The method for encoding texts into embedding vectors.
 
         Args:
-            texts (str | list[str]): Single text string or list of text strings to be encoded.
-            normalize (bool, optional): Whether to normalize the embedding vectors. Defaults to True.
-            encode_type (str, optional): SentenceTransformer supports different encoding methods for 'query' and 'document'. Defaults to "query".
-
-        Raises:
-            ValueError: Throws error if encode_type is not 'query' or 'document'.
+            texts (str | list[list[str]]): Single corpus string or list of corpus strings to be encoded
+            encode_type (str): SentenceTransformer supports different encoding methods for 'query' and 'document'. Defaults to "query".
 
         Returns:
-            list[float]|list[list[float]]: The encoded embedding vector(s).
+            list[list[float]]: The encoded embedding vector(s).
         """
+
         handlers = {
             "query": self.model.encode_query,
             "document": self.model.encode_document,
         }
+
         if encode_type not in handlers:
             raise ValueError("encode_type must be 'query' or 'document'")
         else:
-            return handlers[encode_type](texts, normalize_embeddings=normalize)
+            return handlers[encode_type](texts, normalize_embeddings=True)

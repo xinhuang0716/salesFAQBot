@@ -1,42 +1,31 @@
-import os, sys, logging
-from dotenv import load_dotenv
+import uvicorn
+import os, sys, logging, yaml
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
-import uvicorn
-from utils.responseAPI import response as get_rag_response
 
-# Load environment variables
-load_dotenv()
+from core.init.builder import initialize
+from core.retrieve.dense_search import DenseSearcher
+from core.response.geminiAPI import response as RAGresponse
+from utils.corpus import build_text
 
 
 # Configuration
-class Config:
-    APP_NAME = "Sales FAQ Bot API"
-    VERSION = "1.0.0"
-    HOST = os.getenv("HOST", "0.0.0.0")
-    PORT = int(os.getenv("PORT", "8010"))
-    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    MAX_MESSAGE_LENGTH = 1024
-    LOG_DIR = "logs"
+with open("./config/config.yaml", "r", encoding="utf-8") as f:
+    config: dict = yaml.safe_load(f)["server"]
 
 
-config = Config()
-
-
-# Configure logging
-os.makedirs(config.LOG_DIR, exist_ok=True)
-
+# Logging setup
+os.makedirs(config["log_dir"], exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(config.LOG_DIR, "app.log"), mode="a"),
+        logging.FileHandler(os.path.join(config["log_dir"], "app.log"), mode="a"),
     ],
 )
 logger = logging.getLogger(__name__)
@@ -47,36 +36,35 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
 
     # Startup
-    logger.info(f"Starting {config.APP_NAME} v{config.VERSION}")
-    logger.info(f"Server running on {config.HOST}:{config.PORT}")
+    global client, embedder
+    client, embedder = initialize()
+    logger.info("Starting Sales FAQ Bot v1.0.0")
+    logger.info(f"Server running on {config['host']}:{config['port']}")
     yield
 
     # Shutdown
-    logger.info(f"Shutting down {config.APP_NAME}")
+    logger.info("Shutting down Sales FAQ Bot...")
 
 
 # Initialize FastAPI app
 app = FastAPI(
-    title=config.APP_NAME,
-    version=config.VERSION,
-    description="MVP FAQ Bot API with RAG capabilities",
+    title="Sales FAQ Bot",
+    version="1.0.0",
+    description="A FastAPI application for answering sales-related FAQs.",
     lifespan=lifespan,
 )
+app.mount("/static", StaticFiles(directory="./static"), name="static")
+
 
 # CORS middleware with configurable origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.ALLOWED_ORIGINS,
+    allow_origins=config["cors_origins"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
-    max_age=3600,
+    max_age=config["cors_max_age"],
 )
-
-
-# Mount static files directory
-templates = Jinja2Templates(directory="./template")
-app.mount("/static", StaticFiles(directory="./static"), name="static")
 
 
 # Request/Response models with validation
@@ -84,16 +72,10 @@ class QueryRequest(BaseModel):
     message: str = Field(
         ...,
         min_length=1,
-        max_length=config.MAX_MESSAGE_LENGTH,
+        max_length=config["max_message_length"],
         description="User query message",
+        strip_whitespace=True,
     )
-
-    @validator("message")
-    def _strip_and_validate(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("Message cannot be empty or whitespace only")
-        return v
 
 
 class QueryResponse(BaseModel):
@@ -103,7 +85,7 @@ class QueryResponse(BaseModel):
 
 # Unified exception handler
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
+async def global_exception_handler(exc: Exception):
     if isinstance(exc, HTTPException):
         logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
         return JSONResponse(
@@ -149,20 +131,12 @@ async def get_response(request: QueryRequest):
     try:
         logger.info(f"Processing query: {request.message[:50]}...")
 
-        # TODO: Integrate with vector database to retrieve top_k_docs
-        if (
-            request.message
-            == "當線上變更戶籍地址時，若出現「身分不符請洽臨櫃辦理」，客戶可能屬於哪些身分？"
-        ):
-            top_k_docs = [
-                "若顯示「身分不符請洽臨櫃辦理」，表示客戶可能為以下身分：未成年人、曾於未成年時開立帳戶但成年後未換約、非本國人、法人、無現貨帳號者，需臨櫃辦理變更。",
-                "若申請狀態為「審查中」：待主審分公司審件中，此時客戶不可修改欲辦理分公司。",
-            ]
-        else:
-            top_k_docs = []
+        searcher: DenseSearcher = DenseSearcher(client=client, embedder=embedder)
+        result: list[dict] = searcher.search(query=request.message, k=3, score=0.4)
+        top_k_docs: list[str] = [build_text(doc) for doc in result]
 
         # Call RAG response function
-        response_text = get_rag_response(
+        response_text: str = RAGresponse(
             query=request.message,
             top_k_docs=top_k_docs,
             model="gemini-2.0-flash",
@@ -172,11 +146,6 @@ async def get_response(request: QueryRequest):
         logger.info("Query processed successfully")
         return QueryResponse(response=response_text, status="success")
 
-    except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
     except Exception as e:
         logger.error(f"Error processing query: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -187,5 +156,9 @@ async def get_response(request: QueryRequest):
 
 if __name__ == "__main__":
     uvicorn.run(
-        app, host=config.HOST, port=config.PORT, log_level="info", access_log=True
+        app,
+        host=config["host"],
+        port=config["port"],
+        log_level=config["log_level"],
+        access_log=True,
     )

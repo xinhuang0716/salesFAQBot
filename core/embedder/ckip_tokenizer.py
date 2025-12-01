@@ -1,4 +1,3 @@
-# tokenizer/ckip_tokenizer.py
 from typing import List
 from ckip_transformers.nlp import CkipWordSegmenter
 
