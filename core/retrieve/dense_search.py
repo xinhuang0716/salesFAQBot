@@ -38,28 +38,26 @@ class DenseSearcher:
             Search result object returned by QdrantClient.query_points.
         """
 
-        q_vec = self.embedder.encode(query, encode_type="query")
+        query_vector = self.embedder.encode(query, encode_type="query")
 
-        res = self.client.query_points(
+        search_response = self.client.query_points(
             collection_name="FAQ",
-            query=q_vec,
+            query=query_vector,
             with_payload=["id", "topic", "subtype", "relevance"],
             limit=k,
             score_threshold=score,
         )
 
         results: list[dict] = []
-        for rank, p in enumerate(res.points, start=1):
-            payload = p.payload or {}
-            results.append(
-                {
-                    "rank": rank,
-                    "doc_id": int(payload.get("id", 0)),
-                    "score": float(p.score),
-                    "topic": payload.get("topic"),
-                    "subtype": payload.get("subtype"),
-                    "relevance": payload.get("relevance"),
-                }
-            )
+        for rank, point in enumerate(search_response.points, start=1):
+            payload = point.payload or {}
+            results.append({
+                "rank": rank,
+                "doc_id": int(payload.get("id", 0)),
+                "score": float(point.score),
+                "topic": payload.get("topic"),
+                "subtype": payload.get("subtype"),
+                "relevance": payload.get("relevance"),
+            })
 
         return results

@@ -10,4 +10,3 @@ ckip-transformers==0.3.4
 einops==0.8.1
 fastapi==0.122.0
 uvicorn==0.38.0
-FlagEmbedding==1.3.5

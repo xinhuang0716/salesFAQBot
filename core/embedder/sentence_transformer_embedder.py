@@ -9,15 +9,21 @@ class STEmbedder(BaseEmbedder):
     """SentenceTransformer Embedder implementation."""
 
     def __init__(self, repo: str = "BAAI/bge-m3"):
+        """
+        Initialize the SentenceTransformer Embedder.
+
+        Args:
+            repo (str, optional): HuggingFace model repository ID. Defaults to "BAAI/bge-m3".
+        """
 
         self.repo = repo
         self.root = "./models"
-        self.modelDir = self.root + "/" + self.repo.split("/")[-1]
+        self.model_dir = self.root + "/" + self.repo.split("/")[-1]
 
         self.__login()
         self.__isDownloaded()
 
-        self.model = SentenceTransformer(self.modelDir)
+        self.model = SentenceTransformer(self.model_dir)
 
     def __login(self):
         """Login to HuggingFace Hub using environment variable."""
@@ -30,10 +36,10 @@ class STEmbedder(BaseEmbedder):
     def __isDownloaded(self):
         """Download model from HuggingFace Hub if not exists locally."""
         os.makedirs("./models", exist_ok=True)
-        if os.path.exists(self.modelDir):  return print(f"Model {self.repo} already exists.")
+        if os.path.exists(self.model_dir):  return print(f"Model {self.repo} already exists.")
 
         print(f"Downloading model {self.repo}...")
-        snapshot_download(repo_id=self.repo, local_dir=self.modelDir)
+        snapshot_download(repo_id=self.repo, local_dir=self.model_dir)
 
     def encode(self, texts: str | list[str], encode_type: str) -> list[list[float]]:
         """

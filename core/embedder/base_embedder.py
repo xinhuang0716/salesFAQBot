@@ -4,7 +4,7 @@ class BaseEmbedder(ABC):
     """Abstract base class for different embedding backends."""
 
     @abstractmethod
-    def encode(self, texts: str|list[str], encode_type: str) -> list[list[float]]:
+    def encode(self, texts: str | list[str], encode_type: str) -> list[list[float]]:
         """
         The abstract method for encoding texts into embedding vectors.
 

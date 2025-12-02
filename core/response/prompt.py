@@ -1,5 +1,3 @@
-from typing import List
-
 def system_prompt() -> str:
     """
     Returns the system prompt for the RAG-based response generation.
@@ -37,7 +35,7 @@ def system_prompt() -> str:
     ❌ 不要回答與產品/服務無關的問題
     """
 
-def prompt_constructor(query: str, top_k_docs: List[str]) -> str:
+def prompt_constructor(query: str, top_k_docs: list[str]) -> str:
     """
     Construct the full prompt for the RAG-based response generation.
 

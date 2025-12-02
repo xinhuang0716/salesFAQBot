@@ -1,62 +1,50 @@
-import numpy as np
-from src.ckip_tokenizer import CKIPTokenizer
-from rank_bm25 import BM25Okapi
-from typing import List, Dict
+from core.embedder.bm25 import BM25
+
 
 class BM25Searcher:
     """
-    BM25 searcher using CKIP word segmentation.
+    BM25 searcher for top-K retrieval.
     """
-    def __init__(self, texts: List[str], payloads: List[Dict], tokenizer = CKIPTokenizer()):
+    
+    def __init__(self, bm25: BM25, payloads: list[dict]):
         """
+        Initialize searcher with fitted BM25 model.
+        
         Args:
-            texts (List[str]):
-                Corpus documents. Index i 對應 payloads[i]。
-            payloads (List[Dict]):
-                Metadata list, include topic / subtype / relevance / index。
-            ws_model (str):
-                CKIP word segmenter model name (e.g., "bert-base").
-            device (int):
-                -1: CPU, 0/1/...: GPU id
+            bm25 (BM25): Fitted BM25 instance.
+            payloads (list[dict]): Metadata for each document (topic, subtype, relevance, etc.).
         """
-        self.texts = texts
+        self.bm25 = bm25
         self.payloads = payloads
-        self.tokenizer = tokenizer
+        if self.bm25 is None: raise ValueError("BM25 instance cannot be None, please fit the model first.")
 
-        self.corpus_tokens: List[List[str]] = self.tokenizer.tokenize_batch(texts)
-        self.bm25 = BM25Okapi(self.corpus_tokens)
-        print(f"[BM25 Searcher] Built BM25 index: {len(texts)} docs")
-
-    def search(self, query: str, k: int = 5) -> List[Dict]:
+    def search(self, query: str, k: int = 5) -> tuple[list[dict], list[float]]:
         """
+        Search top-K documents for query.
+        
+        Args:
+            query (str): Search query.
+            k (int): Number of top results to return.
+            
+        Returns:
+            tuple[list[dict], list[float]]: Top-K results with metadata and all scores.
         """
-        query_tokens = self.tokenizer.tokenize(query)
-        scores = self.bm25.get_scores(query_tokens)  # shape: (N,)
+        query_tokens = self.bm25.tokenize(query)[0]
+        scores = self.bm25.bm25_model.get_scores(query_tokens)
+        top_idx = scores.argsort()[::-1][:min(k, len(scores))]
 
-        top_idx = np.argsort(scores)[::-1][:k]
-
-        results: List[Dict] = []
-        for rank, i in enumerate(top_idx, start=1):
-            payload = self.payloads[i]
-            results.append(
-                {
-                    "rank": rank,
-                    "doc_id": int(i),
-                    "score": float(scores[i]),
-                    "topic": payload.get("topic"),
-                    "subtype": payload.get("subtype"),
-                    "relevance": payload.get("relevance"),
-                }
-            )
-        return results
-
-    def raw_scores(self, query: str) -> np.ndarray:
-        """
-        For hybrid rrf ranking.
-        """
-        query_tokens = self.tokenizer.tokenize(query)
-        scores = self.bm25.get_scores(query_tokens)
-        return np.asarray(scores, dtype=np.float32)
+        results = []
+        for rank, idx in enumerate(top_idx, start=1):
+            payload = self.payloads[idx]
+            results.append({
+                "rank": rank,
+                "doc_id": int(idx),
+                "score": float(scores[idx]),
+                "topic": payload.get("topic"),
+                "subtype": payload.get("subtype"),
+                "relevance": payload.get("relevance"),
+            })
+        return results, scores
 
 
 

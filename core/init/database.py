@@ -1,4 +1,4 @@
-import os, shutil
+import os
 from qdrant_client import QdrantClient, models
 
 
@@ -33,7 +33,7 @@ def init_Qdrant(collection_name: str, vectors: list[list[float]], payloads: list
 
         client.upload_collection(
             collection_name=collection_name,
-            vectors=vectors.tolist(),
+            vectors=vectors,
             ids=list(range(len(vectors))),
             payload=payloads,
         )

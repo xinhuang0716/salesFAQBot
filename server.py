@@ -9,23 +9,26 @@ from contextlib import asynccontextmanager
 
 from core.init.builder import initialize
 from core.retrieve.dense_search import DenseSearcher
-from core.response.geminiAPI import response as RAGresponse
+from core.response.geminiAPI import RAGresponse
 from utils.corpus import build_text
 
 
 # Configuration
-with open("./config/config.yaml", "r", encoding="utf-8") as f:
-    config: dict = yaml.safe_load(f)["server"]
+with open("./config/config.yaml", "r", encoding="utf-8") as f: config: dict = yaml.safe_load(f)
+SERVER_CONFIG: dict = config["server"]
+DB_CONFIG: dict = config["db"]
+EMBEDDER_CONFIG: dict = config["embedder"]
+RETRIEVE_CONFIG : dict = config["retriever"]
 
 
 # Logging setup
-os.makedirs(config["log_dir"], exist_ok=True)
+os.makedirs("./logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(config["log_dir"], "app.log"), mode="a"),
+        logging.FileHandler(os.path.join("./logs", "app.log"), mode="a"),
     ],
 )
 logger = logging.getLogger(__name__)
@@ -36,13 +39,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
 
     # Startup
-    global client, embedder
-    client, embedder = initialize()
+    global client, embedder, reranker
+    client, embedder = initialize(collection_name=DB_CONFIG["collection_name"], repo=EMBEDDER_CONFIG["repo"])
     logger.info("Starting Sales FAQ Bot v1.0.0")
-    logger.info(f"Server running on {config['host']}:{config['port']}")
+    logger.info("Server running on 0.0.0.0:8010")
     yield
 
     # Shutdown
+    client.close()
     logger.info("Shutting down Sales FAQ Bot...")
 
 
@@ -59,11 +63,11 @@ app.mount("/static", StaticFiles(directory="./static"), name="static")
 # CORS middleware with configurable origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config["cors_origins"],
+    allow_origins=SERVER_CONFIG["cors_origins"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
-    max_age=config["cors_max_age"],
+    max_age=SERVER_CONFIG["cors_max_age"],
 )
 
 
@@ -72,9 +76,8 @@ class QueryRequest(BaseModel):
     message: str = Field(
         ...,
         min_length=1,
-        max_length=config["max_message_length"],
-        description="User query message",
-        strip_whitespace=True,
+        max_length=SERVER_CONFIG["max_message_length"],
+        description="User query message"
     )
 
 
@@ -114,6 +117,39 @@ async def root():
     return FileResponse("./template/index.html", media_type="text/html")
 
 
+@app.post("/retrieveDocs", response_model=QueryResponse, tags=["Query"])
+async def retrieve_documents(request: QueryRequest):
+    """
+    Retrieve top-k relevant documents for the user query.
+
+    Args:
+        request (QueryRequest): QueryRequest with user message
+
+    Raises:
+        HTTPException: If processing fails
+
+    Returns:
+        QueryResponse with retrieved documents
+    """
+
+    try:
+        logger.info(f"Processing query: {request.message[:50]}...")
+        
+        searcher: DenseSearcher = DenseSearcher(client=client, embedder=embedder)
+        result: list[dict] = searcher.search(query=request.message, k=RETRIEVE_CONFIG["top_k"], score=RETRIEVE_CONFIG["score_threshold"])
+        top_k_docs: list[str] = [build_text(doc) for doc in result]
+
+        logger.info("Query processed successfully")
+        return QueryResponse(response=str(top_k_docs), status="success")
+
+    except Exception as e:
+        logger.error(f"Error processing query: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process query. Please try again.",
+        )
+
+
 @app.post("/response", response_model=QueryResponse, tags=["Query"])
 async def get_response(request: QueryRequest):
     """
@@ -122,25 +158,24 @@ async def get_response(request: QueryRequest):
     Args:
         request: QueryRequest with user message
 
-    Returns:
-        QueryResponse with bot answer
-
     Raises:
         HTTPException: If processing fails
+
+    Returns:
+        QueryResponse with bot answer
     """
+
     try:
         logger.info(f"Processing query: {request.message[:50]}...")
 
         searcher: DenseSearcher = DenseSearcher(client=client, embedder=embedder)
-        result: list[dict] = searcher.search(query=request.message, k=3, score=0.4)
+        result: list[dict] = searcher.search(query=request.message, k=RETRIEVE_CONFIG["top_k"], score=RETRIEVE_CONFIG["score_threshold"])
         top_k_docs: list[str] = [build_text(doc) for doc in result]
 
         # Call RAG response function
         response_text: str = RAGresponse(
             query=request.message,
-            top_k_docs=top_k_docs,
-            model="gemini-2.0-flash",
-            temperature=0.3,
+            top_k_docs=top_k_docs
         )
 
         logger.info("Query processed successfully")
@@ -157,8 +192,8 @@ async def get_response(request: QueryRequest):
 if __name__ == "__main__":
     uvicorn.run(
         app,
-        host=config["host"],
-        port=config["port"],
-        log_level=config["log_level"],
+        host="0.0.0.0",
+        port=8010,
+        log_level="info",
         access_log=True,
     )

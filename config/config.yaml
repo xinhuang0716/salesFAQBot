@@ -1,13 +1,8 @@
 # FastAPI
-
 server:
-  host: "0.0.0.0"
-  port: 8010
   cors_origins: ["*"]
   max_message_length: 1024
   cors_max_age: 3600
-  log_dir: "./logs"
-  log_level: "info"
 
 # RAG
 db:
@@ -15,5 +10,15 @@ db:
 
 embedder:
   type: "sentence_transformer"
-  model_repo: "BAAI/bge-m3"
+  repo: "BAAI/bge-m3" # used if type is "sentence_transformer"
 
+retriever:
+  top_k: 3
+  score_threshold: 0.5
+
+reranker:
+  apply: False
+  type: "sentence_transformer"
+  repo: "jinaai/jina-reranker-v2-base-multilingual" # used if type is "sentence_transformer"
+  top_k: 3
+  score_threshold: 0.5

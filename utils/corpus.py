@@ -1,4 +1,4 @@
-def build_text(row: list[dict]) -> str:    
+def build_text(row: dict) -> str:    
     """
     Build a normalized text representation from a single row in the knowledge Excel file.
     The resulting text will be fed into the embedding model.

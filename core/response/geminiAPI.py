@@ -6,7 +6,7 @@ from core.response.prompt import prompt_constructor
 load_dotenv()
 
 
-def response(query: str, top_k_docs: list[str],  model: str = "gemini-1.5-flash-latest", temperature: float = 0.3) -> str:
+def RAGresponse(query: str, top_k_docs: list[str],  model: str = "gemini-2.0-flash", temperature: float = 0.3) -> str:
     """
     Generate RAG-based response using Gemini API
 
