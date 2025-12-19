@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     global client, embedder, reranker
     client, embedder = initialize(collection_name=DB_CONFIG["collection_name"], repo=EMBEDDER_CONFIG["repo"])
     logger.info("Starting Sales FAQ Bot v1.0.0")
-    logger.info("Server running on 0.0.0.0:8010")
+    logger.info("Server running on localhost:8010")
     yield
 
     # Shutdown

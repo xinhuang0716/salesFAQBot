@@ -31,10 +31,10 @@ def RAGresponse(query: str, top_k_docs: list[str]) -> str:
 
     # API configuration
     url = f"{endpoint}/openai/deployments/gpt-4o/chat/completions?api-version={version}"
-    headers = {"Content-Type": "application/json", "X-goog-api-key": api_key}
+    headers = {"Content-Type": "application/json", "api-key": api_key}
     payload = {
         "messages": [
-            {"role": "system", "content": prompt_template.system_prompt},
+            {"role": "system", "content": str(prompt_template.system_prompt)},
             {"role": "user", "content": prompt_template.construct(query, top_k_docs)}
         ],
         "temperature": 0.3,

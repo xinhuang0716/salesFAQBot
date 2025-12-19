@@ -31,9 +31,6 @@ def RAGresponse(query: str, top_k_docs: list[str], model: str = "gemini-2.5-flas
     # API configuration
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     headers = {"Content-Type": "application/json", "X-goog-api-key": api_key}
-    print(type(prompt_template.system_prompt))
-    print(prompt_template.system_prompt)
-    print(str(prompt_template.system_prompt))
     data = {
         "systemInstruction": {"parts": [{"text": str(prompt_template.system_prompt)}]},
         "contents": [{"role": "user", "parts": [{"text": prompt_template.construct(query, top_k_docs)}]}],
