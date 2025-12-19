@@ -28,7 +28,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join("./logs", "app.log"), mode="a"),
+        logging.FileHandler(os.path.join("./logs", "app.log"), mode="a", encoding="utf-8"),
     ],
 )
 logger = logging.getLogger(__name__)
