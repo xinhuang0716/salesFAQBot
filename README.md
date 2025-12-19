@@ -42,13 +42,16 @@ Ensure your development environment meets the following requirements:
 | Requirement | Version | Description |
 |---------|------|------|
 | Python | 3.12+ | Core runtime environment |
-| pip | 25.0.1+ | Package management tool |
+| uv | 0.9.17+ | Lightweight package manager for environment and dependency building |
 
 ### API Keys
 
 The system requires the following API Keys (configure in `.env` file):
 
-- `GEMINI_API_KEY` Google Gemini API key (required)
+- `GEMINI_API_KEY` Google Gemini API key (for Gemini API)
+- `AZURE_OPENAI_API_KEY` Azure OpenAI API key (for Azure OpenAI)
+- `AZURE_OPENAI_ENDPOINT` Azure OpenAI endpoint URL
+- `AZURE_OPENAI_API_VERSION` Azure OpenAI API version (optional, defaults to 2024-12-01-preview)
 - `HUGGINGFACE_LLM_Model` HuggingFace access token (if using private models)
 
 ---
@@ -63,40 +66,25 @@ git clone https://github.com/xinhuang0716/salesFAQBot.git
 cd salesFAQBot
 ```
 
-### 2. Environment Setup
-
-#### Create Virtual Environment (Recommended)
-
-```powershell
-# PowerShell
-# Set execution policy (required for first-time execution)
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# Create virtual environment
-python -m venv .venv
-
-# Activate virtual environment
-.venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-
-```powershell
-# Install all required packages
-pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
+### 2. Configure Environment Variables
 
 Create a `.env` file in the project root directory:
 
 ```bash
 # .env
+# For Gemini API
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# For Azure OpenAI API
+AZURE_OPENAI_API_KEY=your_azure_openai_key_here
+AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint_here
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# For HuggingFace (if using private models)
 HUGGINGFACE_LLM_Model=your_huggingface_token_here
 ```
 
-### 5. Prepare Knowledge Base
+### 3. Prepare Knowledge Base
 
 Place your FAQ knowledge base Excel file in the `knowledgeDoc/` folder.
 
@@ -109,7 +97,7 @@ Example:
 |----|--------|-------|---------|-----------|
 | 1  | Internal Document | Account Opening Process | Online Account Opening | How to apply for online account opening? |
 
-### 6. Configure System Parameters
+### 4. Configure System Parameters
 
 Edit `config/config.yaml` to adjust system settings (optional):
 
@@ -122,11 +110,13 @@ retriever:
   score_threshold: 0.5  # Similarity threshold
 ```
 
-### 7. Start the Service
+### 5. Start the Service
+
+By default, the virtual ennvironment and dependencies will be automatically created when starting the server for the first time.
 
 ```powershell
-# Start FastAPI server
-python server.py
+# Start FastAPI server using uv
+uv run main.py
 ```
 
 After successful startup, you will see:
@@ -137,7 +127,7 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8010
 ```
 
-### 8. Access the Application
+### 6. Access the Application
 
 Open your browser and visit:
 ```
@@ -221,6 +211,7 @@ salesFAQBot/
 │   │
 │   └── response/                    # Response generation module
 │       ├── geminiAPI.py             # Gemini API integration
+│       ├── aoai.py                  # Azure OpenAI API integration
 │       └── prompt.py                # Prompt constructor
 │
 ├── db/                              # Vector database (auto-generated)
@@ -259,7 +250,7 @@ salesFAQBot/
 │
 ├── .env                             # Environment variables (create manually)
 ├── requirements.txt                 # Python dependencies
-├── server.py                        # FastAPI main program
+├── main.py                          # FastAPI main program
 └── README.md                        # Project documentation
 ```
 
@@ -281,7 +272,8 @@ salesFAQBot/
 
 #### `core/response/`
 - **geminiAPI.py**: Interacts with Google Gemini API to generate final answers
-- **prompt.py**: Constructs RAG prompt templates
+- **aoai.py**: Interacts with Azure OpenAI API to generate final answers
+- **prompt.py**: Constructs RAG prompt templates using class-based approach with cached properties
 
 ---
 
@@ -322,6 +314,25 @@ reranker:
 ---
 
 ## 🔧 Development
+
+### Using Different LLM Providers
+
+The system now supports multiple LLM providers:
+
+1. **Google Gemini API** (via [geminiAPI.py](core/response/geminiAPI.py))
+2. **Azure OpenAI API** (via [aoai.py](core/response/aoai.py))
+
+Both use the unified `prompt_template` class from [prompt.py](core/response/prompt.py):
+
+```python
+from core.response.prompt import prompt_template
+
+# System prompt is cached for efficiency using @cached_property
+system_prompt = prompt_template().system_prompt
+
+# Construct user prompt with retrieved documents
+user_prompt = prompt_template.construct(query, top_k_docs)
+```
 
 ### Extending Embedding Models
 
@@ -367,7 +378,7 @@ Logs are output to:
 - **Console**: Real-time viewing
 - **File**: `logs/app.log`
 
-Log level: INFO (can be adjusted in `server.py`)
+Log level: INFO (can be adjusted in [main.py](main.py))
 
 ---
 
@@ -377,10 +388,13 @@ Log level: INFO (can be adjusted in `server.py`)
 
 ```powershell
 # Test BM25 retrieval
-python test\test_bm25.py
+uv run test\test_bm25.py
 
 # Test reranker
-python test\test_reranker.py
+uv run test\test_reranker.py
+
+# Test API responses
+uv run test\test_response.py
 ```
 ---
 
