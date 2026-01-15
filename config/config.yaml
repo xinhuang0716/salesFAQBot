@@ -9,8 +9,12 @@ db:
   collection_name: "FAQ"
 
 embedder:
-  type: "sentence_transformer"
-  repo: "BAAI/bge-m3" # used if type is "sentence_transformer"
+  type: "aoai"  # Options: "sentence_transformer" or "aoai"
+  repo: "BAAI/bge-m3"  # Only used if type is "sentence_transformer"
+
+llm:
+  type: "aoai"  # Options: "aoai" or "gemini"
+  model: "gpt-4o"  # For AOAI: gpt-4o, gpt-4, etc. For Gemini: gemini-2.5-flash, etc.
 
 retriever:
   top_k: 3
