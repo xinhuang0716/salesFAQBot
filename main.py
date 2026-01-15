@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from core.init.builder import initialize
 from core.retrieve.dense_search import DenseSearcher
-from core.response.geminiAPI import RAGresponse
+from core.response import aoai, geminiAPI
 from utils.corpus import build_text
 
 
@@ -19,6 +19,7 @@ SERVER_CONFIG: dict = config["server"]
 DB_CONFIG: dict = config["db"]
 EMBEDDER_CONFIG: dict = config["embedder"]
 RETRIEVE_CONFIG : dict = config["retriever"]
+LLM_CONFIG: dict = config.get("llm", {"type": "aoai", "model": "gpt-4o"})
 
 
 # Logging setup
@@ -40,7 +41,7 @@ async def lifespan(app: FastAPI):
 
     # Startup
     global client, embedder, reranker
-    client, embedder = initialize(collection_name=DB_CONFIG["collection_name"], repo=EMBEDDER_CONFIG["repo"])
+    client, embedder = initialize(embedder_config=EMBEDDER_CONFIG, collection_name=DB_CONFIG["collection_name"])
     logger.info("Starting Sales FAQ Bot v1.0.0")
     logger.info("Server running on localhost:8010")
     yield
@@ -172,11 +173,22 @@ async def get_response(request: QueryRequest):
         result: list[dict] = searcher.search(query=request.message, k=RETRIEVE_CONFIG["top_k"], score=RETRIEVE_CONFIG["score_threshold"])
         top_k_docs: list[str] = [build_text(doc) for doc in result]
 
-        # Call RAG response function
-        response_text: str = RAGresponse(
-            query=request.message,
-            top_k_docs=top_k_docs
-        )
+        # Call RAG response function based on LLM type
+        llm_type = LLM_CONFIG.get("type", "aoai")
+        if llm_type == "aoai":
+            response_text: str = aoai.RAGresponse(
+                query=request.message,
+                top_k_docs=top_k_docs
+            )
+        elif llm_type == "gemini":
+            model = LLM_CONFIG.get("model", "gemini-2.5-flash")
+            response_text: str = geminiAPI.RAGresponse(
+                query=request.message,
+                top_k_docs=top_k_docs,
+                model=model
+            )
+        else:
+            raise ValueError(f"Unsupported LLM type: {llm_type}")
 
         logger.info("Query processed successfully")
         return QueryResponse(response=response_text, status="success")
