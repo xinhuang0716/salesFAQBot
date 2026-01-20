@@ -5,14 +5,14 @@ from openai import AzureOpenAI
 class AOAIEmbedder(BaseEmbedder):
     """Azure OpenAI Embedder implementation."""
 
-    def __init__(self, model: str = "text-embedding-3-large", dimensions: int = 1024,
+    def __init__(self, model: str = "text-embedding-3-large", dimensions: int = 3076,
                  api_version: str = None, azure_endpoint: str = None, api_key: str = None):
         """
         Initialize the Azure OpenAI Embedder.
         
         Args:
             model (str): Azure OpenAI embedding model name. Defaults to "text-embedding-3-large".
-            dimensions (int): Output vector dimensions. Defaults to 1024. 
+            dimensions (int): Output vector dimensions. Defaults to 3076. 
                             text-embedding-3-large supports: 256, 512, 1024, 1536, 3072 (default max).
             api_version (str, optional): API version. Falls back to env var AZURE_OPENAI_API_VERSION.
             azure_endpoint (str, optional): Azure endpoint URL. Falls back to env var AZURE_OPENAI_ENDPOINT.

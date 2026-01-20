@@ -23,6 +23,11 @@ def RAGresponse(query: str, top_k_docs: list[str], model: str = "gemini-2.5-flas
         str: Generated response from LLM
     """
 
+    # Decline if no documents retrieved
+    if not top_k_docs or top_k_docs == []:
+        return "根據目前的知識文件，我沒有找到相關資訊。請聯繫人工客服以獲取進一步的協助。"
+
+
     # Get API key
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:

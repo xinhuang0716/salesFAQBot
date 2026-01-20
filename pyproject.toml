@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.125.0",
     "fastembed>=0.7.4",
     "hf-xet>=1.2.0",
+    "openai>=2.15.0",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
     "python-dotenv>=1.2.1",

@@ -22,6 +22,11 @@ def RAGresponse(query: str, top_k_docs: list[str]) -> str:
         str: Generated response from LLM
     """
 
+    # Decline if no documents retrieved
+    if not top_k_docs or top_k_docs == []:
+        return "根據目前的知識文件，我沒有找到相關資訊。請聯繫人工客服以獲取進一步的協助。"
+
+
     # Get API key
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
