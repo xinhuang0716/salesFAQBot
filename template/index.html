@@ -1,16 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SalesBot Chat</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@18.0.5/marked.min.js"></script>
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown-light.min.css"
+      href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.9.0/github-markdown-light.min.css"
     />
-    <link rel="icon" href="https://favicon.io/favicon.ico" />
-    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/style.css?v=20260707" />
   </head>
   <body>
     <div class="chat-container">
@@ -33,7 +32,7 @@
             type="text"
             class="chat-input"
             id="chatInput"
-            placeholder="Type your message..."
+            placeholder="請輸入您的問題..."
             autocomplete="off"
           />
           <button type="submit" class="send-button" id="sendButton">
@@ -46,6 +45,7 @@
     </div>
 
     <!-- Custom JavaScript -->
-    <script src="/static/js/script.js"></script>
+    <script src="/static/js/markdown.js?v=20260707"></script>
+    <script src="/static/js/script.js?v=20260707"></script>
   </body>
 </html>

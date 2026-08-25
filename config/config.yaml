@@ -1,24 +1,10 @@
-# FastAPI
-server:
-  cors_origins: ["*"]
-  max_message_length: 1024
-  cors_max_age: 3600
-
-# RAG
-db:
-  collection_name: "FAQ"
-
-embedder:
+embedding:
   type: "aoai"  # Options: "sentence_transformer" or "aoai"
   repo: "BAAI/bge-m3"  # Only used if type is "sentence_transformer"
 
-llm:
-  type: "aoai"  # Options: "aoai" or "gemini"
-  model: "gpt-4o"  # For AOAI: gpt-4o, gpt-4, etc. For Gemini: gemini-2.5-flash, etc.
-
-retriever:
-  top_k: 3
-  score_threshold: 0.5
+retrieval:
+  top_k: 10
+  score_threshold: 0.3
 
 reranker:
   apply: False

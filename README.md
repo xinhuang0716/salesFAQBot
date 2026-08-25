@@ -1,6 +1,6 @@
 # Sales FAQ Bot
 
-![python-image] ![fastapi-image] ![Qdrant-image] ![Gemini-image] ![HTML-image] ![HuggingFace-image]
+![python-image] ![fastapi-image] ![Qdrant-image] ![HTML-image] ![HuggingFace-image]
 
 > An intelligent Q&A system built on RAG (Retrieval-Augmented Generation) architecture, designed to provide fast and accurate answers to sales' FAQ. The system integrates vector retrieval, semantic search, and generative AI, offering a user-friendly web interface for real-time queries.
 
@@ -31,7 +31,7 @@ Sales FAQ Bot is an POC Q&A system designed to solve various questions that sale
 - **Intelligent Answers**: Combine retrieval results with LLM to generate natural and fluent responses
 - **Real-time Interaction**: Provide a demo web chat interface
 
-The system uses FastAPI as the backend framework, Qdrant as the vector database, and integrates BGE-M3 embedding model with Google Gemini API to achieve high-performance semantic search and intelligent Q&A.
+The system uses FastAPI as the backend framework, Qdrant as the vector database, and integrates the BGE-M3 embedding model with Azure OpenAI to achieve high-performance semantic search and intelligent Q&A.
 
 ---
 
@@ -48,7 +48,6 @@ Ensure your development environment meets the following requirements:
 
 The system requires the following API Keys (configure in `.env` file):
 
-- `GEMINI_API_KEY` Google Gemini API key (for Gemini API)
 - `AZURE_OPENAI_API_KEY` Azure OpenAI API key (for Azure OpenAI)
 - `AZURE_OPENAI_ENDPOINT` Azure OpenAI endpoint URL
 - `AZURE_OPENAI_API_VERSION` Azure OpenAI API version (optional, defaults to 2024-12-01-preview)
@@ -72,9 +71,6 @@ Create a `.env` file in the project root directory:
 
 ```bash
 # .env
-# For Gemini API
-GEMINI_API_KEY=your_gemini_api_key_here
-
 # For Azure OpenAI API
 AZURE_OPENAI_API_KEY=your_azure_openai_key_here
 AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint_here
@@ -210,7 +206,6 @@ salesFAQBot/
 │   │   └── rerank_search.py         # Reranking retrieval
 │   │
 │   └── response/                    # Response generation module
-│       ├── geminiAPI.py             # Gemini API integration
 │       ├── aoai.py                  # Azure OpenAI API integration
 │       └── prompt.py                # Prompt constructor
 │
@@ -271,7 +266,6 @@ salesFAQBot/
 - **rerank_search.py**: Retrieval result reranking
 
 #### `core/response/`
-- **geminiAPI.py**: Interacts with Google Gemini API to generate final answers
 - **aoai.py**: Interacts with Azure OpenAI API to generate final answers
 - **prompt.py**: Constructs RAG prompt templates using class-based approach with cached properties
 
@@ -315,14 +309,11 @@ reranker:
 
 ## 🔧 Development
 
-### Using Different LLM Providers
+### LLM Provider
 
-The system now supports multiple LLM providers:
+The system uses **Azure OpenAI API** via [aoai.py](core/response/aoai.py).
 
-1. **Google Gemini API** (via [geminiAPI.py](core/response/geminiAPI.py))
-2. **Azure OpenAI API** (via [aoai.py](core/response/aoai.py))
-
-Both use the unified `prompt_template` class from [prompt.py](core/response/prompt.py):
+It uses the unified `prompt_template` class from [prompt.py](core/response/prompt.py):
 
 ```python
 from core.response.prompt import prompt_template
@@ -423,5 +414,4 @@ This project is for internal use only. Copyright belongs to Fubon Securities Dat
 [fastapi-image]: https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi
 [Qdrant-image]: https://img.shields.io/badge/Qdrant-Vector%20DB-FF6B6B?style=for-the-badge
 [HuggingFace-image]: https://img.shields.io/badge/-HuggingFace-3B4252?style=flat&logo=huggingface&logoColor=
-[Gemini-image]: https://img.shields.io/badge/google%20gemini-8E75B2?style=for-the-badge&logo=google%20gemini&logoColor=white
 [HTML-image]: https://img.shields.io/badge/html-%23E34F26?style=for-the-badge&logo=html5&logoColor=%23fff

@@ -215,7 +215,7 @@ body {
 
 .message-content .markdown-body table th,
 .message-content .markdown-body table td {
-  border: 1px solid #374151;
+  border: 1px solid var(--border);
   padding: 0.5em;
 }
 
@@ -231,7 +231,7 @@ body {
 .chat-input-container {
   padding: 1rem 1.5rem;
   background: var(--bg-start);
-  border-top: 1px solid #374151;
+  border-top: 1px solid var(--border);
 }
 
 .chat-input-form {

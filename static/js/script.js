@@ -4,44 +4,40 @@ const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
 const sendButton = document.getElementById("sendButton");
 
-// API Configuration
-const API_BASE_URL = "http://localhost:8010";
-
 /**
  * Add a message to the chat
  * @param {string} content - Message content
  * @param {boolean} isUser - Whether the message is from user
  */
-
 function addMessage(content, isUser = false) {
   const messageDiv = document.createElement("div");
   messageDiv.className = `message ${isUser ? "user" : "bot"}`;
 
-  // Render markdown for bot messages, plain text for user messages
-  let renderedContent;
-  if (!isUser && typeof marked !== "undefined") {
-    try {
-      renderedContent = marked.parse(content);
-      messageDiv.innerHTML = `
-        <div class="message-avatar">🤖</div>
-        <div class="message-content"><div class="markdown-body">${renderedContent}</div></div>
-      `;
-    } catch (error) {
-      console.error("Markdown parsing error:", error);
-      renderedContent = content;
-      messageDiv.innerHTML = `
-        <div class="message-avatar">🤖</div>
-        <div class="message-content">${renderedContent}</div>
-      `;
+  const avatarEl = document.createElement("div");
+  avatarEl.className = "message-avatar";
+  avatarEl.textContent = isUser ? "👤" : "🤖";
+
+  const contentEl = document.createElement("div");
+  contentEl.className = "message-content";
+
+  // Render markdown for bot messages; use textContent for user input to prevent XSS.
+  if (!isUser) {
+    if (
+      window.MarkdownRenderer &&
+      typeof window.MarkdownRenderer.renderToElement === "function"
+    ) {
+      contentEl.appendChild(window.MarkdownRenderer.renderToElement(content));
+    } else {
+      // Fallback: plain text (should be rare if markdown.js is loaded)
+      contentEl.textContent = content;
+      contentEl.style.whiteSpace = "pre-wrap";
     }
   } else {
-    renderedContent = content;
-    messageDiv.innerHTML = `
-      <div class="message-avatar">${isUser ? "👤" : "🤖"}</div>
-      <div class="message-content">${renderedContent}</div>
-    `;
+    contentEl.textContent = content;
   }
 
+  messageDiv.appendChild(avatarEl);
+  messageDiv.appendChild(contentEl);
   chatMessages.appendChild(messageDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -71,20 +67,28 @@ function removeTypingIndicator() {
   }
 }
 
+let currentController = null;
+
 /**
  * Get bot response from API
  * @param {string} userMessage - User's message
  */
 async function getBotResponse(userMessage) {
+  if (currentController) {
+    currentController.abort();
+  }
+  currentController = new AbortController();
+
   try {
     showTypingIndicator();
 
-    const response = await fetch(`${API_BASE_URL}/response`, {
+    const response = await fetch("/response", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message: userMessage }),
+      signal: currentController.signal,
     });
 
     removeTypingIndicator();
@@ -98,11 +102,14 @@ async function getBotResponse(userMessage) {
     addMessage(data.response, false);
   } catch (error) {
     removeTypingIndicator();
+    if (error.name === "AbortError") return;
     console.error("Error:", error);
     addMessage(
       `抱歉，發生錯誤：${error.message}。請確認後端伺服器是否正在運行。`,
-      false
+      false,
     );
+  } finally {
+    currentController = null;
   }
 }
 
