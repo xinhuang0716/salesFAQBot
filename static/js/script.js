@@ -82,7 +82,7 @@ async function getBotResponse(userMessage) {
   try {
     showTypingIndicator();
 
-    const response = await fetch("/response", {
+    const response = await fetch("/rag-response/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,7 +99,7 @@ async function getBotResponse(userMessage) {
     }
 
     const data = await response.json();
-    addMessage(data.response, false);
+    addMessage(data.data.response, false);
   } catch (error) {
     removeTypingIndicator();
     if (error.name === "AbortError") return;

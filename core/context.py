@@ -1,17 +1,29 @@
 import textwrap
 
 
+def format_document(document: dict | None) -> str:
+    """Return the canonical text representation of one knowledge document.
+
+    Args:
+        document (dict): A knowledge document with required fields ("topic", "subtype", "relevance").
+
+    """
+    if document is None:
+        raise ValueError("Document payload cannot be empty.")
+
+    missing_fields = [field for field in ("topic", "subtype", "relevance") if field not in document]
+    if missing_fields:
+        raise KeyError(f"Document is missing required fields: {', '.join(missing_fields)}")
+
+    return f"[主題]{document['topic']}\n[子題]{document['subtype']}\n[內容]{document['relevance']}"
+
+
 class PromptTemplate:
     """Prompt template for RAG response generation."""
 
     @staticmethod
     def system_prompt() -> str:
-        """Return the system prompt for RAG response generation.
-
-        Returns:
-            str: The system prompt string.
-
-        """
+        """Return the system prompt for RAG response generation."""
         prompt = """
         你是一位專業的證券公司數位內部助理，負責回答公司知識庫涵蓋之內容，包括：
 
@@ -58,7 +70,7 @@ class PromptTemplate:
 
         ### 回答
 
-        （以 1～2 句話直接回答問題）
+        （以 1~2 句話直接回答問題）
 
         ### 補充說明
 
@@ -79,23 +91,11 @@ class PromptTemplate:
 
     @staticmethod
     def construct(query: str, top_k_docs: list[str]) -> str:
-        """Construct the full prompt for RAG response generation.
+        """Construct the RAG user prompt from a query and formatted documents."""
+        context = "（無相關參考文檔）"
+        if top_k_docs:
+            context = "\n\n".join(f"參考文檔 [{index}]\n{document}\n---" for index, document in enumerate(top_k_docs, start=1))
 
-        Args:
-            query (str): User's question or query.
-            top_k_docs (list[str]): List of top-k retrieved documents.
-
-        Returns:
-            str: The constructed full prompt.
-
-        """
-        # Format the retrieved documents as context.
-        if not top_k_docs:
-            context = "（無相關參考文檔）"
-        else:
-            context = "\n\n".join([f"參考文檔 [{idx}]\n{doc}\n---" for idx, doc in enumerate(top_k_docs, 1)])
-
-        # Construct the full prompt.
         full_prompt = f"""
         ## Knowledge Base:
         {context}

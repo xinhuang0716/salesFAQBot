@@ -1,14 +1,9 @@
-embedding:
-  type: "aoai"  # Options: "sentence_transformer" or "aoai"
-  repo: "BAAI/bge-m3"  # Only used if type is "sentence_transformer"
-
 retrieval:
-  top_k: 10
-  score_threshold: 0.3
+  top_k: 16
+  score_threshold: 0.5
+  hybrid_top_k: 8
+  rrf_k: 60
 
 reranker:
-  apply: False
-  type: "sentence_transformer"
-  repo: "jinaai/jina-reranker-v2-base-multilingual" # used if type is "sentence_transformer"
   top_k: 3
-  score_threshold: 0.5
+  score_threshold: 0.3

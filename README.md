@@ -2,7 +2,7 @@
 
 ![python-image] ![fastapi-image] ![Qdrant-image] ![HTML-image] ![HuggingFace-image]
 
-> An intelligent Q&A system built on RAG (Retrieval-Augmented Generation) architecture, designed to provide fast and accurate answers to sales' FAQ. The system integrates vector retrieval, semantic search, and generative AI, offering a user-friendly web interface for real-time queries.
+> An internal RAG (Retrieval-Augmented Generation) chatbot for sales FAQ scenarios. The system combines dense retrieval, BM25 retrieval, hybrid fusion, reranking, and Azure OpenAI response generation.
 
 ![5kome-utkoy](https://github.com/user-attachments/assets/73d561b0-fa34-4160-9587-0cc17f15a4db)
 
@@ -16,22 +16,21 @@
 - [Usage](#-usage)
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
-- [Development](#-development)
-- [Testing](#-testing)
 - [Contact](#-contact)
 
 ---
 
 ## 🎯 Overview
 
-Sales FAQ Bot is an POC Q&A system designed to solve various questions that sales encounter in their daily work. Through advanced RAG technology, the system can:
+Sales FAQ Bot is a proof-of-concept Q&A assistant for internal sales operations. It supports:
 
-- **Fast Retrieval**: Accurately find relevant documents from the knowledge base
-- **Semantic Understanding**: Use LLM models to understand user query intent
-- **Intelligent Answers**: Combine retrieval results with LLM to generate natural and fluent responses
-- **Real-time Interaction**: Provide a demo web chat interface
+- **Dense Retrieval**: Semantic vector search using `BAAI/bge-m3`
+- **BM25 Retrieval**: Sparse keyword-based retrieval
+- **Hybrid Retrieval**: Reciprocal Rank Fusion (RRF) of dense and BM25 results
+- **Reranking**: Cross-encoder reranking using `BAAI/bge-reranker-base`
+- **RAG Answering**: Final response generation through Azure OpenAI
 
-The system uses FastAPI as the backend framework, Qdrant as the vector database, and integrates the BGE-M3 embedding model with Azure OpenAI to achieve high-performance semantic search and intelligent Q&A.
+The backend is built with FastAPI, local vector storage is provided by Qdrant (file-based), and model assets are cached under `models/`.
 
 ---
 
@@ -39,19 +38,18 @@ The system uses FastAPI as the backend framework, Qdrant as the vector database,
 
 Ensure your development environment meets the following requirements:
 
-| Requirement | Version | Description |
-|---------|------|------|
-| Python | 3.12+ | Core runtime environment |
-| uv | 0.9.17+ | Lightweight package manager for environment and dependency building |
+| Requirement | Version | Description                                |
+| ----------- | ------- | ------------------------------------------ |
+| Python      | 3.12+   | Core runtime environment                   |
+| uv          | 0.9.17+ | Package and virtual environment management |
 
-### API Keys
+### Environment Variables
 
-The system requires the following API Keys (configure in `.env` file):
+Runtime secrets are loaded from `config/.env`.
 
-- `AZURE_OPENAI_API_KEY` Azure OpenAI API key (for Azure OpenAI)
-- `AZURE_OPENAI_ENDPOINT` Azure OpenAI endpoint URL
-- `AZURE_OPENAI_API_VERSION` Azure OpenAI API version (optional, defaults to 2024-12-01-preview)
-- `HUGGINGFACE_LLM_Model` HuggingFace access token (if using private models)
+- `AZURE_OPENAI_API_KEY`
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_DEPLOYMENT`
 
 ---
 
@@ -60,75 +58,54 @@ The system requires the following API Keys (configure in `.env` file):
 ### 1. Clone the Project
 
 ```bash
-# Clone the project (or download the project archive)
 git clone https://github.com/xinhuang0716/salesFAQBot.git
 cd salesFAQBot
 ```
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root directory:
+Copy and edit the environment template:
+
+```powershell
+Copy-Item config/.env.example config/.env
+```
+
+Then update `config/.env`:
 
 ```bash
-# .env
-# For Azure OpenAI API
 AZURE_OPENAI_API_KEY=your_azure_openai_key_here
-AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint_here
-AZURE_OPENAI_API_VERSION=2024-12-01-preview
-
-# For HuggingFace (if using private models)
-HUGGINGFACE_LLM_Model=your_huggingface_token_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
 ```
 
 ### 3. Prepare Knowledge Base
 
-Place your FAQ knowledge base Excel file in the `knowledgeDoc/` folder.
+Put your Excel knowledge file in `knowledgeDoc/`.
 
-**File Format Requirements:**
-- File type: `.xlsx`
-- Required columns: `id`, `source`, `topic`, `subtype`, `relevance`
+Required columns:
 
-Example:
-| id | source | topic | subtype | relevance |
-|----|--------|-------|---------|-----------|
-| 1  | Internal Document | Account Opening Process | Online Account Opening | How to apply for online account opening? |
+- `id`: Unique identifier for each knowledge chunk
+- `source`: The source document or reference
+- `topic`: The main topic of the knowledge chunk
+- `subtype`: The subcategory or type of the knowledge chunk
+- `relevance`: The knowledge content or answer text
 
-### 4. Configure System Parameters
-
-Edit `config/config.yaml` to adjust system settings (optional):
-
-```yaml
-embedder:
-  repo: "BAAI/bge-m3"  # Can switch to other embedding models
-
-retriever:
-  top_k: 3              # Number of documents to retrieve
-  score_threshold: 0.5  # Similarity threshold
-```
-
-### 5. Start the Service
-
-By default, the virtual ennvironment and dependencies will be automatically created when starting the server for the first time.
+### 4. Start the Service
 
 ```powershell
-# Start FastAPI server using uv
 uv run main.py
 ```
 
-After successful startup, you will see:
-```
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8010
+After startup, service runs at:
+
+```text
+http://localhost:8000
 ```
 
-### 6. Access the Application
+Then access the following endpoints:
 
-Open your browser and visit:
-```
-http://localhost:8010
-```
+- Chat UI: `http://localhost:8000/`
+- API Docs (Swagger): `http://localhost:8000/docs`
 
 ---
 
@@ -136,41 +113,113 @@ http://localhost:8010
 
 ### Web Interface Usage
 
-1. **Open Application**: Visit `http://localhost:8010` in your browser
-2. **Enter Question**: Type your question in the chat box
-3. **Get Answer**: The system will automatically retrieve relevant documents and generate answers
+1. Open `http://localhost:8000/`
+2. Enter your question in the chat box
+3. The frontend calls `/rag-response/` and renders markdown output
 
 ### API Usage
 
-#### 1. Retrieve Relevant Documents
+All major API responses use a unified envelope:
 
-```bash
-curl -X POST "http://localhost:8010/retrieveDocs" \
-  -H "Content-Type: application/json" \
-  -d '{"message": "如何進行線上開戶？"}'
-```
-
-**Response Example:**
 ```json
 {
-  "response": "[{'rank': 1, 'doc_id': 1, 'score': 0.85, 'topic': '開戶流程', ...}]",
-  "status": "success"
+  "status": "success",
+  "data": {}
 }
 ```
 
-#### 2. Get Intelligent Answer
+#### 1. Health Check
 
 ```bash
-curl -X POST "http://localhost:8010/response" \
-  -H "Content-Type: application/json" \
-  -d '{"message": "如何進行線上開戶？"}'
+curl -X GET "http://localhost:8000/health/"
 ```
 
-**Response Example:**
+Response example:
+
 ```json
 {
-  "response": "線上開戶流程如下：\n1. 準備身分證與...",
-  "status": "success"
+  "status": "success",
+  "data": {
+    "service": "ok"
+  }
+}
+```
+
+#### 2. Dense Retrieval
+
+```bash
+curl -X POST "http://localhost:8000/dense-retrieve/" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"如何進行線上開戶？"}'
+```
+
+Response example:
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "point_id": 12,
+      "dense_rank": 1,
+      "dense_score": 0.83,
+      "topic": "開戶流程",
+      "subtype": "線上開戶",
+      "relevance": "..."
+    }
+  ]
+}
+```
+
+#### 3. RAG Response
+
+```bash
+curl -X POST "http://localhost:8000/rag-response/" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"如何進行線上開戶？"}'
+```
+
+Response example:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "response": "### 回答\n...",
+    "references": [
+      {
+        "point_id": 12,
+        "hybrid_rank": 1,
+        "rerank_rank": 1,
+        "topic": "開戶流程",
+        "subtype": "線上開戶",
+        "relevance": "..."
+      }
+    ]
+  }
+}
+```
+
+#### 4. Other Retrieval Endpoints
+
+- `POST /bm25-retrieve/`
+- `POST /hybrid-retrieve/`
+- `POST /reranker/`
+
+These endpoints also accept:
+
+```json
+{
+  "message": "your query"
+}
+```
+
+and return:
+
+```json
+{
+  "status": "success",
+  "data": []
 }
 ```
 
@@ -178,215 +227,82 @@ curl -X POST "http://localhost:8010/response" \
 
 ## 📂 Project Structure
 
-```
+```text
 salesFAQBot/
-│
-├── config/                          # Configuration files
-│   └── config.yaml                  # Main system configuration
-│
-├── core/                            # Core functionality modules
-│   ├── __init__.py
-│   │
-│   ├── init/                        # Initialization module
-│   │   ├── builder.py               # System initialization builder
-│   │   └── database.py              # Qdrant database initialization
-│   │
-│   ├── embedder/                    # Embedding module
-│   │   ├── base_embedder.py         # Embedder base class (abstract)
-│   │   ├── sentence_transformer_embedder.py  # ST embedder implementation
-│   │   └── bm25.py                  # BM25 sparse embedder
-│   │
-│   ├── reranker/                    # Reranking module
-│   │   ├── base_reranker.py         # Reranker base class (abstract)
-│   │   └── sentence_transformer_reranker.py  # ST reranker implementation
-│   │
-│   ├── retrieve/                    # Retrieval module
-│   │   ├── dense_search.py          # Dense vector retrieval
-│   │   ├── bm25_search.py           # BM25 sparse retrieval
-│   │   └── rerank_search.py         # Reranking retrieval
-│   │
-│   └── response/                    # Response generation module
-│       ├── aoai.py                  # Azure OpenAI API integration
-│       └── prompt.py                # Prompt constructor
-│
-├── db/                              # Vector database (auto-generated)
-│   ├── meta.json                    # Qdrant metadata
-│   └── collection/                  # Vector collection storage
-│       └── FAQ/                     # FAQ collection data
-│
-├── knowledgeDoc/                    # Knowledge base source files
-│   └── *.xlsx                       # FAQ data in Excel format
-│
-├── logs/                            # Log files (auto-generated)
-│   └── app.log                      # Application logs
-│
-├── models/                          # AI model files (auto-downloaded)
-│   ├── bge-m3/                      # BGE-M3 embedding model
-│   ├── jina-reranker-v2-base-multilingual/  # Jina reranker
-│   └── ...                          # Other models
-│
-├── static/                          # Static resources
-│   ├── css/
-│   │   └── style.css                # Web styles
-│   └── js/
-│       └── script.js                # Frontend interaction logic
-│
-├── template/                        # HTML templates
-│   └── index.html                   # Main chat interface
-│
-├── test/                            # Test scripts
-│   ├── test_bm25.py                 # BM25 tests
-│   └── test_reranker.py             # Reranker tests
-│
-├── test_records/                    # Test records
-│
-├── utils/                           # Utility functions
-│   └── corpus.py                    # Text processing utilities
-│
-├── .env                             # Environment variables (create manually)
-├── requirements.txt                 # Python dependencies
-├── main.py                          # FastAPI main program
-└── README.md                        # Project documentation
+|
+|-- config/                         # Runtime settings and environment files
+|   |-- .env                        # Local secrets (not committed)
+|   |-- .env.example                # Environment variable template
+|   `-- config.yaml                 # Retrieval and reranker parameters
+|
+|-- core/                           # Core retrieval and generation logic
+|   |-- aoai.py                     # Azure OpenAI request/response client
+|   |-- bm25.py                     # BM25 index build and sparse retrieval
+|   |-- context.py                  # Prompt construction and document formatting
+|   |-- dense_search.py             # Dense vector retrieval over Qdrant
+|   |-- embedder.py                 # Sentence-transformer embedding wrapper
+|   |-- hybrid_search.py            # RRF fusion between dense and BM25
+|   `-- reranker.py                 # Cross-encoder reranking
+|
+|-- infra/                          # Infrastructure and bootstrapping utilities
+|   |-- database.py                 # Local Qdrant initialization helpers
+|   |-- indexer.py                  # Excel loading and vectorization pipeline
+|   `-- settings.py                 # Typed settings loader from yaml + env
+|
+|-- routers/                        # FastAPI route handlers
+|   |-- bm25_retrieve.py            # BM25 retrieval endpoint
+|   |-- dense_retrieve.py           # Dense retrieval endpoint
+|   |-- health.py                   # Health check endpoint
+|   |-- hybrid_retrieve.py          # Hybrid retrieval endpoint
+|   |-- pages.py                    # Landing page route
+|   |-- rag_response.py             # End-to-end RAG answer endpoint
+|   |-- reranker_retrieve.py        # Dense + reranker endpoint
+|   `-- schemas.py                  # Shared request/response models
+|
+|-- knowledgeDoc/                   # Source Excel knowledge files (*.xlsx)
+|-- models/                         # Downloaded embedding/reranker model assets
+|-- static/                         # Frontend assets (css/js)
+|-- template/                       # HTML templates
+|-- db/                             # Local Qdrant data directory
+|
+|-- main.py                         # FastAPI app entry and lifecycle wiring
+|-- pyproject.toml                  # Project metadata and dependencies
+|-- uv.lock                         # Locked dependency versions for uv
+`-- README.md                       # Project documentation
 ```
-
-### Core Module Descriptions
-
-#### `core/init/`
-- **builder.py**: Handles initialization flow during system startup, including loading knowledge base, creating embedding vectors, and initializing database
-- **database.py**: Encapsulates Qdrant database creation and configuration logic
-
-#### `core/embedder/`
-- **base_embedder.py**: Defines the abstract interface for embedders
-- **sentence_transformer_embedder.py**: Implementation based on Sentence Transformers
-- **bm25.py**: Implements BM25 sparse embedding
-
-#### `core/retrieve/`
-- **dense_search.py**: Semantic vector retrieval (primary method)
-- **bm25_search.py**: Keyword retrieval
-- **rerank_search.py**: Retrieval result reranking
-
-#### `core/response/`
-- **aoai.py**: Interacts with Azure OpenAI API to generate final answers
-- **prompt.py**: Constructs RAG prompt templates using class-based approach with cached properties
 
 ---
 
 ## ⚙️ Configuration
 
-### config.yaml Detailed Description
+### `config/config.yaml`
 
 ```yaml
-# FastAPI server settings
-server:
-  cors_origins: ["*"]          # CORS allowed origins (restrict in production)
-  max_message_length: 1024     # Maximum message length
-  cors_max_age: 3600           # CORS preflight request cache time (seconds)
+retrieval:
+  top_k: 16
+  score_threshold: 0.5
+  hybrid_top_k: 8
+  rrf_k: 60
 
-# Vector database settings
-db:
-  collection_name: "FAQ"       # Qdrant collection name
-
-# Embedding model settings
-embedder:
-  type: "sentence_transformer"            # Embedder type
-  repo: "BAAI/bge-m3"                    # HuggingFace model repository
-
-# Retrieval settings
-retriever:
-  top_k: 3                     # Number of documents to retrieve
-  score_threshold: 0.5         # Minimum similarity score threshold
-
-# Reranking settings (optional)
 reranker:
-  apply: False                 # Whether to enable reranking
-  type: "sentence_transformer" # Reranker type
-  repo: "jinaai/jina-reranker-v2-base-multilingual"
-  top_k: 3                     # Number to keep after reranking
-  score_threshold: 0.5         # Reranking score threshold
+  top_k: 3
+  score_threshold: 0.3
 ```
 
----
+### Parameter Description
 
-## 🔧 Development
+#### `retrieval`
 
-### LLM Provider
+- `top_k`: Number of top documents retrieved from each base retriever (dense and BM25) before fusion.
+- `score_threshold`: Minimum similarity score for dense retrieval. Set `null` to disable threshold filtering.
+- `hybrid_top_k`: Final number of documents returned after hybrid fusion ranking.
+- `rrf_k`: Smoothing constant used by Reciprocal Rank Fusion. Larger values reduce rank-gap impact.
 
-The system uses **Azure OpenAI API** via [aoai.py](core/response/aoai.py).
+#### `reranker`
 
-It uses the unified `prompt_template` class from [prompt.py](core/response/prompt.py):
+- `top_k`: Number of documents kept after cross-encoder reranking.
+- `score_threshold`: Minimum reranker score to keep a candidate. Set `null` to keep by rank only.
 
-```python
-from core.response.prompt import prompt_template
-
-# System prompt is cached for efficiency using @cached_property
-system_prompt = prompt_template().system_prompt
-
-# Construct user prompt with retrieved documents
-user_prompt = prompt_template.construct(query, top_k_docs)
-```
-
-### Extending Embedding Models
-
-1. Inherit from `BaseEmbedder` base class:
-
-```python
-# core/embedder/my_embedder.py
-from core.embedder.base_embedder import BaseEmbedder
-
-class MyEmbedder(BaseEmbedder):
-    def __init__(self, config):
-        # Initialization logic
-        pass
-    
-    def encode(self, texts, encode_type):
-        # Embedding logic
-        return embeddings
-```
-
-2. Configure in `config.yaml`:
-
-```yaml
-embedder:
-  type: "my_embedder"
-  # Other configurations...
-```
-
-### Extending Retrieval Strategies
-
-Add new retrieval classes in the `core/retrieve/` directory:
-
-```python
-# core/retrieve/my_search.py
-class MySearcher:
-    def search(self, query, k=3, score=0.4):
-        # Retrieval logic
-        return results
-```
-
-### Log Management
-
-Logs are output to:
-- **Console**: Real-time viewing
-- **File**: `logs/app.log`
-
-Log level: INFO (can be adjusted in [main.py](main.py))
-
----
-
-## 🧪 Testing
-
-### Running Tests
-
-```powershell
-# Test BM25 retrieval
-uv run test\test_bm25.py
-
-# Test reranker
-uv run test\test_reranker.py
-
-# Test API responses
-uv run test\test_response.py
-```
 ---
 
 ## 📞 Contact
@@ -394,11 +310,13 @@ uv run test\test_response.py
 For any questions or suggestions, please contact:
 
 **Project Team**
+
 - **Email**: tom.h.huang@fubon.com, kris.yj.chen@fubon.com
 - **Phone**: 02-87716888 #69175, 02-66080879 #69194
 - **Department**: Securities Data Science Department, Data Service Division (5F)
 
 **Issue Reporting**
+
 - Please submit bugs or feature requests via GitHub Issues
 - Pull Request contributions are welcome
 
@@ -413,5 +331,5 @@ This project is for internal use only. Copyright belongs to Fubon Securities Dat
 [python-image]: https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54
 [fastapi-image]: https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi
 [Qdrant-image]: https://img.shields.io/badge/Qdrant-Vector%20DB-FF6B6B?style=for-the-badge
-[HuggingFace-image]: https://img.shields.io/badge/-HuggingFace-3B4252?style=flat&logo=huggingface&logoColor=
+[HuggingFace-image]: https://img.shields.io/badge/-HuggingFace-3B4252?style=for-the-badge&logo=huggingface&logoColor=
 [HTML-image]: https://img.shields.io/badge/html-%23E34F26?style=for-the-badge&logo=html5&logoColor=%23fff

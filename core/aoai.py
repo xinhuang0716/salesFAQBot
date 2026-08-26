@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-from core.prompt import PromptTemplate
+from core.context import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class AOAIClient:
 
         try:
             text = result["output"][0]["content"][0]["text"]
-            logger.info("AOAI response received successfully.")
+            logger.info("AOAI response received successfully: %s", text[:20])
 
             return text
 

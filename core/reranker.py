@@ -1,53 +1,63 @@
-import os
-from dotenv import load_dotenv
-from huggingface_hub import login, snapshot_download
+from pathlib import Path
+
+from huggingface_hub import snapshot_download
 from sentence_transformers import CrossEncoder
-from core.reranker.base_reranker import BaseReranker
+
+from core.context import format_document
+
+BASE_DIR = Path(__file__).resolve().parents[1]
 
 
-class STEReranker(BaseReranker):
+class Reranker:
+    """Rerank retrieved documents with a locally cached BGE cross-encoder."""
 
-    def __init__(self, repo="jinaai/jina-reranker-v2-base-multilingual"):
-        """
-        Initialize the SentenceTransformer Reranker.
-
-        Args:
-            repo (str, optional): HuggingFace model repository ID. Defaults to "jinaai/jina-reranker-v2-base-multilingual".
-        """
-        self.repo: str = repo
-        self.root: str = "./models"
-        self.model_dir: str = os.path.join(self.root, self.repo.split("/")[-1])
-
-        self.__login()
-        self.__isDownloaded()
-
-        self.model = CrossEncoder(self.model_dir, trust_remote_code=True)
-
-    def __login(self):
-        """Login to HuggingFace Hub using environment variable."""
-        try:
-            load_dotenv()
-            login(os.getenv("HUGGINGFACE_LLM_Model"))
-        except:
-            raise EnvironmentError("HuggingFace login failed. Please check your HUGGINGFACE_LLM_Model environment variable.")
-
-    def __isDownloaded(self):
-        """Download model from HuggingFace Hub if not exists locally."""
-        os.makedirs("./models", exist_ok=True)
-        if os.path.exists(self.model_dir): return
-
-        print(f"Downloading model {self.repo}...")
-        snapshot_download(repo_id=self.repo, local_dir=self.model_dir)
-
-    def rank(self, query: str, docs: list[str], top_k: int) -> list[dict]:
-        """Rank documents based on their relevance to the query.
+    def __init__(self, model_repo: str = "BAAI/bge-reranker-base") -> None:
+        """Load the reranker from disk, downloading it once when necessary.
 
         Args:
-            query (str): User query string
-            docs (list[str]): Top K documents to be ranked
-            top_k (int): Number of top documents to return after reranking.
+            model_repo (str, optional): The Hugging Face repository ID of the model to use
+
+        """
+        self.model_repo = model_repo
+        self.model_dir = BASE_DIR / "models" / model_repo.rsplit("/", maxsplit=1)[-1]
+
+        if not (self.model_dir / "config.json").is_file():
+            self.model_dir.parent.mkdir(parents=True, exist_ok=True)
+            snapshot_download(repo_id=self.model_repo, local_dir=str(self.model_dir))
+
+        self.model = CrossEncoder(str(self.model_dir), local_files_only=True)
+
+    def rerank(self, query: str, documents: list[dict], top_k: int, score_threshold: float | None = None) -> list[dict]:
+        """Return the best matching documents in reranked order.
+
+        Args:
+            query (str): The user query to rerank against.
+            documents (list[dict]): The retrieved documents to rerank.
+            top_k (int): The maximum number of documents to return.
+            score_threshold (float | None, optional): Minimum rerank score to include. Defaults to None.
 
         Returns:
-            list[dict]: The list of dicts containing corpus_id, score, and text of the ranked documents, following the order from highest to lowest score.
+            list[dict]: The reranked documents with updated rank, score and payload fields.
+
         """
-        return self.model.rank(query, docs, top_k, return_documents=True)
+        if not documents:
+            return []
+
+        # Reranking.
+        paired_documents = [(query, format_document(document)) for document in documents]
+        scores = self.model.predict(paired_documents, show_progress_bar=False)
+        scored_documents = sorted(zip(documents, scores, strict=True), key=lambda item: float(item[1]), reverse=True)
+
+        # Filter by score threshold if provided.
+        if score_threshold is not None:
+            scored_documents = [item for item in scored_documents if float(item[1]) >= score_threshold]
+
+        # Limit to top_k results and update rank and score fields.
+        reranked_documents = []
+        for rank, (document, score) in enumerate(scored_documents[:top_k], start=1):
+            reranked_document = dict(document)
+            reranked_document["rerank_rank"] = rank
+            reranked_document["rerank_score"] = float(score)
+            reranked_documents.append(reranked_document)
+
+        return reranked_documents

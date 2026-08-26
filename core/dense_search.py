@@ -19,13 +19,13 @@ class DenseSearcher:
         self.embedder = embedder
         self.collection_name = collection_name
 
-    def search(self, query: str, top_k: int, score_threshold: float) -> list[dict]:
+    def search(self, query: str, top_k: int, score_threshold: float | None) -> list[dict]:
         """Return the highest-scoring documents for a user query.
 
         Args:
             query (str): The user query to search for.
             top_k (int): The maximum number of results to return.
-            score_threshold (float): The minimum score threshold for results to be included.
+            score_threshold (float | None): The minimum score threshold, or None to use top-K only.
 
         Returns:
             list[dict]: A list of dictionaries containing the rank, score, and payload of the retrieved documents.
@@ -41,12 +41,6 @@ class DenseSearcher:
 
         results = []
         for rank, point in enumerate(response.points, start=1):
-            results.append(
-                {
-                    "rank": rank,
-                    "score": float(point.score),
-                    **(point.payload or {}),
-                }
-            )
+            results.append({"point_id": point.id, "dense_rank": rank, "dense_score": float(point.score), **(point.payload or {})})
 
         return results

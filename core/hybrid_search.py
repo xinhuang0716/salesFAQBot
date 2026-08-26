@@ -1,52 +1,62 @@
-from core.embedder.bm25 import BM25
+from core.bm25 import BM25
+from core.dense_search import DenseSearcher
 
 
-class BM25Searcher:
-    """
-    BM25 searcher for top-K retrieval.
-    """
-    
-    def __init__(self, bm25: BM25, payloads: list[dict]):
-        """
-        Initialize searcher with fitted BM25 model.
-        
+class HybridSearch:
+    """Combine dense and BM25 results with reciprocal rank fusion."""
+
+    def __init__(self, dense_searcher: DenseSearcher, bm25: BM25, rrf_k: int = 60) -> None:
+        """Initialize the dense searcher, BM25 index, and RRF constant.
+
         Args:
-            bm25 (BM25): Fitted BM25 instance.
-            payloads (list[dict]): Metadata for each document (topic, subtype, relevance, etc.).
+            dense_searcher (DenseSearcher): The dense searcher instance.
+            bm25 (BM25): The BM25 index instance.
+            rrf_k (int): The RRF constant for reciprocal rank fusion.
+
         """
+        self.dense_searcher = dense_searcher
         self.bm25 = bm25
-        self.payloads = payloads
-        if self.bm25 is None: raise ValueError("BM25 instance cannot be None, please fit the model first.")
+        self.rrf_k = rrf_k
 
-    def search(self, query: str, k: int = 5) -> tuple[list[dict], list[float]]:
-        """
-        Search top-K documents for query.
-        
+    def search(self, query: str, top_k: int, score_threshold: float | None, hybrid_top_k: int) -> list[dict]:
+        """Return dense and BM25 results merged by point ID and ranked with RRF.
+
         Args:
-            query (str): Search query.
-            k (int): Number of top results to return.
-            
-        Returns:
-            tuple[list[dict], list[float]]: Top-K results with metadata and all scores.
+            query (str): The search query.
+            top_k (int): The number of top results to retrieve from each searcher.
+            score_threshold (float | None): The minimum score threshold for dense search results.
+            hybrid_top_k (int): The number of top results to return after hybrid ranking.
+
         """
-        query_tokens = self.bm25.tokenize(query)[0]
-        scores = self.bm25.bm25_model.get_scores(query_tokens)
-        top_idx = scores.argsort()[::-1][:min(k, len(scores))]
+        dense_documents = self.dense_searcher.search(query, top_k, score_threshold)
+        bm25_documents = self.bm25.search(query, top_k)
+
+        documents = {}
+        for document in dense_documents + bm25_documents:
+            point_id = document["point_id"]
+            documents.setdefault(point_id, {}).update(document)
 
         results = []
-        for rank, idx in enumerate(top_idx, start=1):
-            payload = self.payloads[idx]
-            results.append({
-                "rank": rank,
-                "doc_id": int(idx),
-                "score": float(scores[idx]),
-                "topic": payload.get("topic"),
-                "subtype": payload.get("subtype"),
-                "relevance": payload.get("relevance"),
-            })
-        return results, scores
+        for document in documents.values():
+            dense_rank = document.get("dense_rank")
+            bm25_rank = document.get("bm25_rank")
+            hybrid_score = 0.0
 
+            if dense_rank is not None:
+                hybrid_score += 1 / (self.rrf_k + dense_rank)
+            if bm25_rank is not None:
+                hybrid_score += 1 / (self.rrf_k + bm25_rank)
 
+            document["dense_rank"] = dense_rank
+            document["dense_score"] = document.get("dense_score")
+            document["bm25_rank"] = bm25_rank
+            document["bm25_score"] = document.get("bm25_score")
+            document["hybrid_score"] = hybrid_score
+            results.append(document)
 
+        results.sort(key=lambda document: document["hybrid_score"], reverse=True)
 
+        for rank, document in enumerate(results[:hybrid_top_k], start=1):
+            document["hybrid_rank"] = rank
 
+        return results[:hybrid_top_k]

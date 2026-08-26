@@ -1,16 +1,20 @@
+import logging
 from pathlib import Path
 
 import pandas as pd
 
+from core.context import format_document
 from core.embedder import Embedder
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 KNOWLEDGE_DIR = BASE_DIR / "knowledgeDoc"
 REQUIRED_COLUMNS = ["id", "source", "topic", "subtype", "relevance"]
 
+logger = logging.getLogger(__name__)
+
 
 def build_index_data(embedder: Embedder) -> tuple[list[list[float]], list[dict]]:
-    """Read the most recently modified workbook and return vectors and payloads."""
+    """Read the latest workbook and return dense vectors and payloads."""
     files = list(KNOWLEDGE_DIR.glob("*.xlsx"))
 
     if not files:
@@ -20,11 +24,14 @@ def build_index_data(embedder: Embedder) -> tuple[list[list[float]], list[dict]]
     dataframe = pd.read_excel(workbook_path, usecols=REQUIRED_COLUMNS).dropna(how="all")
 
     payloads = dataframe.fillna("").to_dict(orient="records")
-    vectors = embedder.encode_documents(
-        [
-            f"[主題]{payload['topic']}\n[子題]{payload['subtype']}\n[內容]{payload['relevance']}"
-            for payload in payloads
-        ]
+    documents = [format_document(payload) for payload in payloads]
+
+    logger.info(
+        "Loaded %s documents from %s for indexing.",
+        len(documents),
+        workbook_path.name,
     )
+    vectors = embedder.encode_documents(documents)
+    logger.info("Encoded %s dense vectors for indexing.", len(vectors))
 
     return vectors, payloads

@@ -13,11 +13,11 @@ class Embedder:
         """Initialize the embedding model.
 
         Args:
-            model_repo (str): The Hugging Face repository ID of the model to use.
+            model_repo (str, optional): The Hugging Face repository ID of the model to use.
 
         """
         self.model_repo = model_repo
-        self.model_dir = BASE_DIR / "models" / model_repo
+        self.model_dir = BASE_DIR / "models" / model_repo.rsplit("/", maxsplit=1)[-1]
 
         if not (self.model_dir / "modules.json").is_file():
             self.model_dir.parent.mkdir(parents=True, exist_ok=True)

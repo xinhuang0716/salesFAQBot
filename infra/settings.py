@@ -19,35 +19,26 @@ class EnvSettings(BaseModel):
     azure_openai_deployment: str = Field(min_length=1)
 
 
-class EmbeddingSettings(BaseModel):
-    """Local embedding model settings."""
-
-    type: str = Field(pattern="^(aoai|sentence_transformer)$")
-    repo: str | None = None
-
-
 class RetrievalSettings(BaseModel):
     """Local document retrieval settings."""
 
     top_k: int = Field(gt=0)
-    score_threshold: float = Field(ge=0.0, le=1.0)
+    score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    hybrid_top_k: int = Field(gt=0)
+    rrf_k: int = Field(default=60, gt=0)
 
 
 class RerankerSettings(BaseModel):
     """Optional local reranking settings."""
 
-    apply: bool = False
-    type: str = Field(default="sentence_transformer")
-    repo: str | None = None
     top_k: int = Field(gt=0)
-    score_threshold: float = Field(ge=0.0, le=1.0)
+    score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class Settings(BaseModel):
     """Complete application settings."""
 
     env: EnvSettings
-    embedding: EmbeddingSettings
     retrieval: RetrievalSettings
     reranker: RerankerSettings
 
@@ -68,7 +59,6 @@ def get_settings() -> Settings:
                 "azure_openai_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT"),
             }
         ),
-        embedding=EmbeddingSettings.model_validate(config["embedding"]),
         retrieval=RetrievalSettings.model_validate(config["retrieval"]),
         reranker=RerankerSettings.model_validate(config["reranker"]),
     )

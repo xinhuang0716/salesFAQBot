@@ -12,7 +12,7 @@ def initialize_database(collection_name: str, build_index_data: Callable[[], tup
 
     Args:
         collection_name (str): Name of the Qdrant collection to initialize.
-        build_index_data (Callable): A function that returns a tuple of vectors and payloads.
+        build_index_data (Callable): A function that returns vectors and payloads for indexing.
 
     Returns:
         QdrantClient: A local Qdrant client with the specified collection.
@@ -22,11 +22,11 @@ def initialize_database(collection_name: str, build_index_data: Callable[[], tup
 
     client = QdrantClient(path=str(DATABASE_PATH))
 
-    # Return the client if exists
+    # Check if the collection already exists.
     if client.collection_exists(collection_name):
         return client
 
-    # Build new collection if it doesn't exist
+    # Build the index data if the collection does not exist.
     vectors, payloads = build_index_data()
 
     if not vectors:
@@ -35,9 +35,13 @@ def initialize_database(collection_name: str, build_index_data: Callable[[], tup
     if len(vectors) != len(payloads):
         raise ValueError("The number of vectors must match the number of payloads.")
 
+    # Initialize the collection.
     client.create_collection(
         collection_name=collection_name,
-        vectors_config=models.VectorParams(size=len(vectors[0]), distance=models.Distance.COSINE)
+        vectors_config=models.VectorParams(
+            size=len(vectors[0]),
+            distance=models.Distance.COSINE,
+        ),
     )
 
     client.upload_collection(

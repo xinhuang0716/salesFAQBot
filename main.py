@@ -1,5 +1,3 @@
-"""FastAPI application entry point."""
-
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,17 +9,24 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from core.aoai import AOAIClient
+from core.bm25 import BM25
 from core.dense_search import DenseSearcher
 from core.embedder import Embedder
+from core.hybrid_search import HybridSearch
+from core.reranker import Reranker
 from infra.database import initialize_database
 from infra.indexer import build_index_data
 from infra.settings import get_settings
+from routers.bm25_retrieve import router as bm25_router
+from routers.dense_retrieve import router as dense_router
 from routers.health import router as health_router
+from routers.hybrid_retrieve import router as hybrid_retrieve_router
 from routers.pages import router as pages_router
 from routers.rag_response import router as rag_response_router
-from routers.retrieve import router as retrieve_router
+from routers.reranker_retrieve import router as rerank_router
 
 BASE_DIR = Path(__file__).resolve().parent
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +54,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         client=app.state.client,
         embedder=app.state.embedder,
     )
+
+    # Initialize the BM25 indexer for local sparse retrieval.
+    app.state.bm25 = BM25(client=app.state.client)
+    app.state.bm25.fit()
+
+    # Initialize HybridSearch for dense and BM25 fusion.
+    app.state.hybrid_searcher = HybridSearch(
+        dense_searcher=app.state.dense_searcher,
+        bm25=app.state.bm25,
+        rrf_k=settings.retrieval.rrf_k,
+    )
+
+    # Initialize the Reranker for re-ranking retrieved results.
+    app.state.reranker = Reranker()
 
     # Initialize the AOAI client.
     app.state.aoai_client = AOAIClient(
@@ -85,7 +104,10 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 # Include routers.
 app.include_router(health_router)
 app.include_router(pages_router)
-app.include_router(retrieve_router)
+app.include_router(dense_router)
+app.include_router(bm25_router)
+app.include_router(hybrid_retrieve_router)
+app.include_router(rerank_router)
 app.include_router(rag_response_router)
 
 

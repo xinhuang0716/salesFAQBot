@@ -1,26 +1,22 @@
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/retrieve", tags=["Retrieve"])
+from routers.schemas import ApiResponse, QueryRequest
 
-
-class QueryRequest(BaseModel):
-    """User query request body."""
-
-    message: str = Field(min_length=1, max_length=256, description="The user query to search for.")
+router = APIRouter(prefix="/dense-retrieve", tags=["Dense Retrieve"])
 
 
 @router.post("/")
-def retrieve(request: Request, body: QueryRequest) -> list[dict]:
+def dense_retrieve(request: Request, body: QueryRequest) -> ApiResponse[list[dict]]:
     """Return dense-search results for a user query."""
     try:
         settings = request.app.state.settings
 
-        return request.app.state.dense_searcher.search(
+        results = request.app.state.dense_searcher.search(
             query=body.message,
             top_k=settings.retrieval.top_k,
             score_threshold=settings.retrieval.score_threshold,
         )
+        return ApiResponse(data=results)
 
     except Exception as error:
         raise HTTPException(
